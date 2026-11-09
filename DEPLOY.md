@@ -40,17 +40,12 @@ npm test
 npm run build
 ```
 
+## Status (2026-11-09)
+- GitHub repo `fed17fed/atiana` exists; `main` is pushed.
+- Vercel project `atiana` is connected to the repo (push to `main` = production deploy, PR = preview deploy).
+- CI: see https://github.com/fed17fed/atiana/actions (owner checks the first run).
+
 ## Owner steps (by hand)
-
-### 1. Create the GitHub repo (needed first)
-1. Open github.com (account `fed17fed`) -> New repository.
-2. Name `atiana`, **Private**, no README, no .gitignore, no licence (empty repo).
-3. Tell the DevOps employee. Then the first push to `main` and the Vercel link are done.
-
-### 2. Connect Vercel to GitHub (after the repo exists)
-Vercel -> project `atiana` -> Settings -> Git -> Connect Git Repository -> `fed17fed/atiana`.
-After this, every push to `main` makes a production deploy and every PR makes a preview deploy.
-(The DevOps employee can also try `vercel git connect` once the repo exists.)
 
 ### 3. Branch protection on `main` (web steps; no `gh` CLI)
 1. GitHub -> repo `atiana` -> Settings -> Branches -> Add branch ruleset (or Add classic branch protection rule).
@@ -62,8 +57,8 @@ After this, every push to `main` makes a production deploy and every PR makes a 
 Note: private repos on the free GitHub plan may not allow branch protection or rulesets. If GitHub shows "upgrade" message, tell the DevOps employee. Do not pay without a decision.
 
 ## What is still open
-- GitHub repo not created yet (owner) -> no push, no CI run, no auto-deploy from git yet.
-- Branch protection (owner steps above).
+- Branch protection on `main` (owner steps above).
+- Owner: check that the first CI run is green (Actions tab).
 - Task 0.4: Stripe (test mode), Resend, Turnstile keys -> later.
 - Prisma and migrations: task 2.2 (developer).
 - Vercel Hobby is for non-commercial use only. Real business use needs a paid plan or another host.
