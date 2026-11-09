@@ -28,3 +28,25 @@ export async function guardRoute(
     return { action: "next" };
   }
 }
+
+/**
+ * /book/class needs a real, bookable group class. Without one the answer must be a real HTTP 404
+ * (the page itself streams, so it could only answer 200). `exists` returns null when the database
+ * cannot answer: then the page decides.
+ */
+export type SessionLookup = (sessionId: string) => Promise<boolean>;
+
+export async function guardBookClass(
+  pathname: string,
+  sessionParam: string | null,
+  exists: SessionLookup,
+): Promise<{ action: "next" } | { action: "not-found" }> {
+  if (pathname !== "/book/class") return { action: "next" };
+  const id = (sessionParam ?? "").trim();
+  if (!id || id.length > 60) return { action: "not-found" };
+  try {
+    return (await exists(id)) ? { action: "next" } : { action: "not-found" };
+  } catch {
+    return { action: "next" };
+  }
+}

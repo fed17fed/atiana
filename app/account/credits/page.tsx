@@ -32,7 +32,7 @@ export default async function CreditsPage({ searchParams }: PageProps<"/account/
       )}
       {grants.length === 0 ? (
         <div className="empty">
-          <h3>No credits yet</h3>
+          <h2>No credits yet</h2>
           <p>A class pack gives you credits. One credit books one class.</p>
           <Link className="btn btn-primary" href="/classes#packs">
             See class packs
@@ -46,7 +46,7 @@ export default async function CreditsPage({ searchParams }: PageProps<"/account/
             return (
               <li className="acc-card" key={g.id}>
                 <div className="row">
-                  <h3>{label}</h3>
+                  <h2>{label}</h2>
                   <span className={`status ${expired ? "s-past" : g.creditsLeft > 0 ? "s-confirmed" : "s-past"}`}>
                     {expired ? "Expired" : g.creditsLeft > 0 ? "Active" : "Used up"}
                   </span>

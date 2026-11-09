@@ -5,8 +5,9 @@ export async function getMyBookings(db: PrismaClient, userId: string) {
   const rows = await db.booking.findMany({
     where: { userId },
     orderBy: { session: { startsAt: "desc" } },
-    include: { session: { include: { offering: true } } },
+    include: { session: { include: { offering: true } }, creditGrant: { select: { expiresAt: true, expiredAt: true } } },
   });
+  const now = new Date();
   return rows.map((b) => ({
     id: b.id,
     status: b.status,
@@ -20,6 +21,11 @@ export async function getMyBookings(db: PrismaClient, userId: string) {
     zoomUrl: b.status === "CONFIRMED" ? b.session.zoomUrl : null,
     location: b.status === "CONFIRMED" ? (b.session.location ?? b.session.offering.location) : null,
     createdAt: b.createdAt,
+    /** True when the credit used for this booking has expired (it cannot be returned on cancel). */
+    creditExpired:
+      b.paidWith === "CREDIT" &&
+      !!b.creditGrant &&
+      (b.creditGrant.expiredAt !== null || (b.creditGrant.expiresAt !== null && b.creditGrant.expiresAt <= now)),
   }));
 }
 

@@ -1,8 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { guardRoute, SESSION_COOKIES } from "@/lib/route-guard";
+import { guardBookClass, guardRoute, SESSION_COOKIES } from "@/lib/route-guard";
 
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  if (pathname === "/book/class") {
+    const g = await guardBookClass(pathname, req.nextUrl.searchParams.get("session"), async (id) => {
+      const { prisma } = await import("@/lib/prisma");
+      const row = await prisma.classSession.findFirst({
+        where: { id, status: "SCHEDULED", startsAt: { gt: new Date() }, offering: { type: "GROUP_CLASS", published: true } },
+        select: { id: true },
+      });
+      return row !== null;
+    });
+    // Rewrite to a path that does not exist: Next answers with the site's 404 page and status 404.
+    if (g.action === "not-found") return NextResponse.rewrite(new URL("/booking-not-found", req.url));
+    return NextResponse.next();
+  }
   const token = SESSION_COOKIES.map((n) => req.cookies.get(n)?.value).find(Boolean);
 
   const result = await guardRoute(pathname, token, async (sessionToken) => {
@@ -31,4 +44,4 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/account/:path*", "/admin/:path*"] };
+export const config = { matcher: ["/account/:path*", "/admin/:path*", "/book/class"] };

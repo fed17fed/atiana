@@ -186,3 +186,6 @@ details.code summary{cursor:pointer;color:var(--color-ember-deep);font-weight:70
 .btn-ghost:hover { background: var(--color-sand); color: var(--color-plum); }
 .bk > *, .stack > *, .sched > * { min-width: 0; }
 .weeknav b { font-size: 1rem; }
+.acc-card h2 { margin: 0; font-size: 1.2rem; line-height: 1.25; }
+.pack-mini h2 { font-size: 1.5rem; margin-bottom: 6px; }
+.empty h2 { font-size: 1.5rem; margin-bottom: 6px; }

@@ -15,6 +15,8 @@ const NOTES: Record<string, { cls: string; text: string }> = {
   booked: { cls: "a-success", text: "You are booked. We sent a confirmation to your email." },
   paid: { cls: "a-success", text: "Thank you. Your payment is being confirmed. Your booking shows as Confirmed in a moment." },
   returned: { cls: "a-success", text: "Your booking is cancelled and your credit was returned." },
+  credit_expired: { cls: "a-warn", text: "Your booking is cancelled. The credit you used has expired, so it cannot be returned." },
+  booked_demo: { cls: "a-success", text: "You are booked. Demo: confirmation emails are not active yet. Your Zoom link is shown below." },
   late: { cls: "a-warn", text: `Your booking is cancelled. It was less than ${CANCELLATION_HOURS} hours before the start, so the credit is not returned.` },
   credit_given: { cls: "a-success", text: "Your booking is cancelled. We added 1 class credit to your account (see My credits)." },
   refund_requested: { cls: "a-success", text: "Your booking is cancelled and your money-back request was sent. The order shows as Refunded when the card payment is returned." },
@@ -39,7 +41,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
   const user = await requireUser("/account/bookings");
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  const noteKey = one(sp.booked) ? "booked" : one(sp.paid) ? "paid" : (one(sp.cancel) ?? "");
+  const noteKey = one(sp.booked) ? (one(sp.booked) === "demo" ? "booked_demo" : "booked") : one(sp.paid) ? "paid" : (one(sp.cancel) ?? "");
   const note = NOTES[noteKey];
 
   const bookings = await safeDb("my bookings", async () => {
@@ -120,7 +122,9 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
             <input type="hidden" name="bookingId" value={b.id} />
             <p className="note">
               {b.paidWith === "CREDIT"
-                ? early
+                ? b.creditExpired
+                  ? "This credit has expired, so it cannot be returned if you cancel."
+                  : early
                   ? "Cancelling now returns your credit."
                   : `Less than ${CANCELLATION_HOURS} hours before the start: cancelling does not return your credit.`
                 : b.paidWith === "STRIPE" && b.status === "CONFIRMED"

@@ -125,12 +125,12 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/schedu
           ) : (
             <p className="login-hint">
               <Icon name="info" className="size-5!" />
-              <span>Book as a guest. We ask you to log in with an email link at checkout.</span>
+              <span>Log in with an email link before you book. No password needed.</span>
             </p>
           )}
         </div>
         <div className="pack-mini" style={{ marginTop: 20 }}>
-          <h3>Save with a pack</h3>
+          <h2>Save with a pack</h2>
           <p>
             {packs[0].credits} classes for {formatEuro(packs[0].priceCents)} (€12 each) or {packs[1].credits} for{" "}
             {formatEuro(packs[1].priceCents)}. Credits expire after {packs[0].validWeeks} or {packs[1].validWeeks} weeks.
@@ -155,7 +155,7 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/schedu
         ) : data.items.length === 0 ? (
           <div className="empty">
             <Icon name="clock" className="ic" />
-            <h3>No classes this week</h3>
+            <h2>No classes this week</h2>
             <p>New dates are added every week.</p>
             <div className="row-wrap" style={{ justifyContent: "center", marginTop: 12 }}>
               {data.more && (

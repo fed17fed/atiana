@@ -34,7 +34,7 @@ export async function cancelMyBooking(formData: FormData): Promise<void> {
     });
     if (r.ok) {
       outcome =
-        r.refund === "CREDIT" ? "credit_given" : r.refund === "MONEY" ? "refund_requested" : r.creditReturned ? "returned" : r.paidWith === "CREDIT" ? "late" : r.paidWith === "STRIPE" ? "late_paid" : "ok";
+        r.refund === "CREDIT" ? "credit_given" : r.refund === "MONEY" ? "refund_requested" : r.creditReturned ? "returned" : r.paidWith === "CREDIT" ? (r.early ? "credit_expired" : "late") : r.paidWith === "STRIPE" ? "late_paid" : "ok";
     } else {
       outcome =
         r.code === "PAST" ? "past" : r.code === "CHOICE_REQUIRED" ? "choose" : r.code === "REFUND_FAILED" ? "refund_failed" : r.code === "REFUND_OFF" ? "money_off" : "error";

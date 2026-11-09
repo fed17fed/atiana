@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { cancelBooking, createBooking, type BookingErrorCode } from "@/lib/booking-service";
+import { mailConfig } from "@/lib/mail";
 import { sendBookingConfirmations } from "@/lib/notifications";
 import { createPackageOrder } from "@/lib/orders-service";
 import { requestOrigin } from "@/lib/request-origin";
@@ -30,6 +31,15 @@ const ERROR_TEXT: Record<BookingErrorCode, string> = {
   NO_PRICE: "This class has no price yet. Please try again later.",
   DISCLAIMER: "Please confirm that you have read the Health Disclaimer.",
   TYPE_MISMATCH: "This booking page does not match the class. Please start again from the schedule.",
+};
+
+/** Slot wording for 1:1 bookings (a slot is a time, not a class). */
+const ERROR_TEXT_SLOT: Partial<Record<BookingErrorCode, string>> = {
+  NOT_FOUND: "This time slot is not available any more. Please choose another time.",
+  PAST: "This time slot has already started. Please choose another time.",
+  FULL: "Sorry, this time slot was just taken. Please choose another time.",
+  ALREADY_BOOKED: "You already have a booking for this time slot. See My bookings.",
+  TYPE_MISMATCH: "This booking page does not match the slot. Please start again from the 1:1 page.",
 };
 
 /** Books a class or a 1:1 slot. Card payments start Stripe Checkout (OFF without Stripe keys). */
@@ -64,11 +74,12 @@ export async function startBooking(_prev: BookState, formData: FormData): Promis
     console.error("[book] failed", error instanceof Error ? error.message : error);
     return { status: "error", message: "Sorry, something went wrong. Please try again." };
   }
-  if (!result.ok) return { status: "error", message: ERROR_TEXT[result.code], field: result.code === "NO_CREDIT" ? "pay" : undefined };
+  if (!result.ok) return { status: "error", message: kind === "one" ? (ERROR_TEXT_SLOT[result.code] ?? ERROR_TEXT[result.code]) : ERROR_TEXT[result.code], field: result.code === "NO_CREDIT" ? "pay" : undefined };
 
   if (pay === "credit") {
     await sendBookingConfirmations(prisma, [result.bookingId]);
-    redirect("/account/bookings?booked=1");
+    // Honest text: the page says when confirmation emails are off (demo).
+    redirect(`/account/bookings?booked=${mailConfig() ? "1" : "demo"}`);
   }
 
   // Card: Stripe Checkout. The webhook (not this page) marks the order PAID.

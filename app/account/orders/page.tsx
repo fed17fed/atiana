@@ -28,7 +28,7 @@ export default async function OrdersPage() {
   if (orders.length === 0) {
     return (
       <div className="empty">
-        <h3>No orders yet</h3>
+        <h2>No orders yet</h2>
         <p>Your payments will appear here.</p>
         <Link className="btn btn-primary" href="/schedule">
           See the schedule
@@ -43,7 +43,7 @@ export default async function OrdersPage() {
         return (
           <li className="acc-card" key={o.id}>
             <div className="row">
-              <h3>{o.items.map((i) => i.description).join(", ") || "Order"}</h3>
+              <h2>{o.items.map((i) => i.description).join(", ") || "Order"}</h2>
               <span className={`status ${st.cls}`}>{st.label}</span>
             </div>
             <div className="meta">

@@ -34,3 +34,21 @@ describe("route guard", () => {
     expect(await guardRoute("/admin", "tok", vi.fn().mockRejectedValue(new Error("db down")))).toEqual({ action: "next" });
   });
 });
+
+import { guardBookClass } from "@/lib/route-guard";
+
+describe("guardBookClass (real 404)", () => {
+  it("other paths pass", async () => expect(await guardBookClass("/schedule", null, vi.fn())).toEqual({ action: "next" }));
+  it("no session, empty or too long id: 404 without a lookup", async () => {
+    const lookup = vi.fn();
+    expect(await guardBookClass("/book/class", null, lookup)).toEqual({ action: "not-found" });
+    expect(await guardBookClass("/book/class", "  ", lookup)).toEqual({ action: "not-found" });
+    expect(await guardBookClass("/book/class", "x".repeat(61), lookup)).toEqual({ action: "not-found" });
+    expect(lookup).not.toHaveBeenCalled();
+  });
+  it("unknown session: 404; known session: next; database error: the page decides", async () => {
+    expect(await guardBookClass("/book/class", "bogus", async () => false)).toEqual({ action: "not-found" });
+    expect(await guardBookClass("/book/class", "ok", async () => true)).toEqual({ action: "next" });
+    expect(await guardBookClass("/book/class", "ok", () => Promise.reject(new Error("db")))).toEqual({ action: "next" });
+  });
+});
