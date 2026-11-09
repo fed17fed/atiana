@@ -199,6 +199,7 @@ model ClassSession {
 
   bookings Booking[]
 
+  @@unique([offeringId, startsAt]) // one occurrence per offering and start time (idempotent demo seed)
   @@index([offeringId, startsAt])
   @@index([startsAt])
 }
@@ -232,16 +233,19 @@ model Package {
 }
 
 model CreditGrant {
-  id           String       @id @default(cuid())
-  userId       String
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  packageId    String?
-  package      Package?     @relation(fields: [packageId], references: [id], onDelete: SetNull)
-  creditsTotal Int
-  creditsLeft  Int
-  expiresAt    DateTime?
-  source       CreditSource
-  createdAt    DateTime     @default(now())
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageId      String?
+  package        Package?       @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  creditsTotal   Int
+  creditsLeft    Int
+  expiresAt      DateTime?
+  expiredAt      DateTime? // set by the daily cron when the unused credits were removed
+  creditsExpired Int            @default(0) // how many unused credits the cron removed
+  appliesTo      OfferingType[] @default([GROUP_CLASS]) // copied from the package when granted
+  source         CreditSource
+  createdAt      DateTime       @default(now())
 
   bookings Booking[]
   referral Referral? // set when this grant is a referral reward
@@ -262,6 +266,12 @@ model Booking {
   creditGrantId        String?
   creditGrant          CreditGrant?  @relation(fields: [creditGrantId], references: [id], onDelete: SetNull)
   disclaimerAcceptedAt DateTime?
+  reminderSentAt       DateTime? // 24 h reminder (daily cron); set once
+  // Database guarantees against double booking (NULL when the booking is not active):
+  //   userKey = "<sessionId>:<userId>" -> the same person cannot hold two seats in one session
+  //   slotKey = "<sessionId>"          -> only for capacity-1 sessions (1:1): one active booking per slot
+  userKey              String?       @unique
+  slotKey              String?       @unique
   orderId              String?
   order                Order?        @relation(fields: [orderId], references: [id], onDelete: SetNull)
   createdAt            DateTime      @default(now())
@@ -313,6 +323,7 @@ model Order {
   discountCodeId  String?
   discountCode    DiscountCode? @relation(fields: [discountCodeId], references: [id], onDelete: SetNull)
   stripeSessionId String?       @unique
+  paidAt          DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 

@@ -16,13 +16,16 @@
     "db:seed": "prisma db seed"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.11.3",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "next": "16.4.5",
+    "next-auth": "^5.0.0-beta.32",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "stripe": "^23.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
