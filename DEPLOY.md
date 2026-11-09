@@ -47,7 +47,9 @@ npm run build
 
 ## Owner steps (by hand)
 
-### 3. Branch protection on `main` (web steps; no `gh` CLI)
+### 3. Branch protection on `main` – SKIPPED (2026-11-09)
+GitHub asks for payment for branch protection on a private repo (Free plan). The owner decided not to pay. Instead: the team rule "no push without the owner's OK" + CI on every push. The steps below are kept for later (paid plan or public repo).
+
 1. GitHub -> repo `atiana` -> Settings -> Branches -> Add branch ruleset (or Add classic branch protection rule).
 2. Branch name pattern: `main`.
 3. Turn on: **Require a pull request before merging**.
@@ -57,8 +59,8 @@ npm run build
 Note: private repos on the free GitHub plan may not allow branch protection or rulesets. If GitHub shows "upgrade" message, tell the DevOps employee. Do not pay without a decision.
 
 ## What is still open
-- Branch protection on `main` (owner steps above).
-- Owner: check that the first CI run is green (Actions tab).
+- Branch protection on `main`: skipped (needs a paid GitHub plan), see section 3.
+- CI: green (owner checked on 2026-11-09). Repo is private.
 - Task 0.4: Stripe (test mode), Resend, Turnstile keys -> later.
-- Prisma and migrations: task 2.2 (developer).
+- Prisma: first migration applied on Neon **dev** only. Neon **main**: later, when the site needs the database (owner decision 2026-11-09). Command then: `npm run db:deploy` with the main DIRECT_URL, after a Neon backup branch.
 - Vercel Hobby is for non-commercial use only. Real business use needs a paid plan or another host.
