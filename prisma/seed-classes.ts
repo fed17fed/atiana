@@ -3,7 +3,7 @@
 // A second run on the same day reports 0 changes. Later runs only add new future weeks.
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { DEMO_ZOOM_URL, SINGLE_CLASS_PRICE_CENTS, classTypes, oneToOneOfferings, packs } from "../content/catalog";
+import { DEMO_ZOOM_URL, SINGLE_CLASS_PRICE_CENTS, classTypes, oneToOneOfferings, oneToOnePacks, packs } from "../content/catalog";
 import { planGroupSessions, planOneToOneSlots } from "../lib/demo-schedule";
 import { PrismaClient } from "../lib/generated/prisma/client";
 
@@ -84,13 +84,16 @@ async function main() {
       } else prices.unchanged++;
     }
 
-    for (const p of packs) {
+    for (const p of [
+      ...packs.map((x) => ({ ...x, appliesTo: "GROUP_CLASS" as const })),
+      ...oneToOnePacks.map((x) => ({ ...x, appliesTo: "ONE_TO_ONE" as const })),
+    ]) {
       const before = await prisma.package.findFirst({ where: { name: p.name } });
       const data = {
         credits: p.credits,
         validDays: p.validDays,
         priceCents: p.priceCents,
-        appliesTo: ["GROUP_CLASS" as const],
+        appliesTo: [p.appliesTo],
         active: true,
       };
       if (!before) {

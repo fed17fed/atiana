@@ -10,7 +10,9 @@ import { Prisma, type PrismaClient } from "./generated/prisma/client";
 import type { OfferingType } from "./generated/prisma/enums";
 import {
   bookingKeys,
+  CANCEL_CREDIT_VALID_DAYS,
   canCancel,
+  creditExpiry,
   holdCutoff,
   isRefundable,
   pickCreditGrant,
@@ -197,6 +199,11 @@ export async function createBooking(db: PrismaClient, input: CreateBookingInput)
   }
 }
 
+export type RefundChoice = "CREDIT" | "MONEY";
+
+/** Asks Stripe for a refund. Must use an idempotency key (see makeRefunder in stripe-service.ts). Throws on failure. */
+export type Refunder = (args: { orderId: string; bookingId: string }) => Promise<void>;
+
 export type CancelBookingResult =
   | {
       ok: true;
@@ -204,26 +211,62 @@ export type CancelBookingResult =
       paidWith: "STRIPE" | "CREDIT" | "FREE" | null;
       /** True when the cancellation was early enough (24 h rule). */
       early: boolean;
+      /** For card-paid bookings cancelled early: what the client chose. */
+      refund: RefundChoice | null;
     }
-  | { ok: false; code: "NOT_FOUND" | "NOT_ACTIVE" | "PAST" };
+  | {
+      ok: false;
+      code: "NOT_FOUND" | "NOT_ACTIVE" | "PAST" | "CHOICE_REQUIRED" | "REFUND_OFF" | "REFUND_FAILED";
+    };
 
-/** Cancels a booking of this user. The credit comes back only if it is early enough. */
+/**
+ * Cancels a booking of this user.
+ *  - credit booking: the credit comes back only if it is early enough (24 h rule)
+ *  - card-paid booking, early: the client must choose CREDIT (1 new credit) or MONEY (Stripe refund)
+ *  - anything late: no return
+ * Double submit is safe: only one request can change the status, and the refund uses one idempotency key per booking.
+ */
 export async function cancelBooking(
   db: PrismaClient,
-  input: { userId: string; bookingId: string; now?: Date },
+  input: { userId: string; bookingId: string; now?: Date; refundChoice?: RefundChoice; refund?: Refunder },
 ): Promise<CancelBookingResult> {
   const now = input.now ?? new Date();
+
+  const isEarlyCardPaid = (b: { status: string; paidWith: string | null; session: { startsAt: Date } }) =>
+    b.status === "CONFIRMED" && b.paidWith === "STRIPE" && isRefundable(b.session.startsAt, now);
+
+  // Money back: ask Stripe FIRST (same key = same refund, so retries and double clicks never refund twice),
+  // then cancel the seat. The order is marked REFUNDED later, by the webhook, when Stripe confirms.
+  if (input.refundChoice === "MONEY") {
+    const pre = await db.booking.findFirst({
+      where: { id: input.bookingId, userId: input.userId },
+      include: { session: true },
+    });
+    if (pre && canCancel(pre.session.startsAt, now) && isEarlyCardPaid(pre) && pre.orderId) {
+      if (!input.refund) return { ok: false, code: "REFUND_OFF" };
+      try {
+        await input.refund({ orderId: pre.orderId, bookingId: pre.id });
+      } catch (error) {
+        console.error("[refund] Stripe refund failed", error instanceof Error ? error.message : error);
+        return { ok: false, code: "REFUND_FAILED" };
+      }
+    }
+  }
+
   return db.$transaction(async (tx): Promise<CancelBookingResult> => {
     // userId in the filter: a user can never cancel somebody else's booking.
     const booking = await tx.booking.findFirst({
       where: { id: input.bookingId, userId: input.userId },
-      include: { session: true },
+      include: { session: { include: { offering: true } } },
     });
     if (!booking) return { ok: false, code: "NOT_FOUND" };
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
       return { ok: false, code: "NOT_ACTIVE" };
     }
     if (!canCancel(booking.session.startsAt, now)) return { ok: false, code: "PAST" };
+
+    const cardRefundCase = isEarlyCardPaid(booking);
+    if (cardRefundCase && !input.refundChoice) return { ok: false, code: "CHOICE_REQUIRED" };
 
     // Gate: only one of two parallel cancel requests can change the status.
     const changed = await tx.booking.updateMany({
@@ -234,6 +277,8 @@ export async function cancelBooking(
 
     const early = isRefundable(booking.session.startsAt, now);
     let creditReturned = false;
+    let refund: RefundChoice | null = null;
+
     if (booking.paidWith === "CREDIT" && booking.creditGrantId && early) {
       const grant = await tx.creditGrant.findUnique({ where: { id: booking.creditGrantId } });
       // An expired credit is not given back.
@@ -245,13 +290,31 @@ export async function cancelBooking(
         creditReturned = back.count === 1;
       }
     }
+
+    if (cardRefundCase && input.refundChoice === "CREDIT") {
+      await tx.creditGrant.create({
+        data: {
+          userId: input.userId,
+          creditsTotal: 1,
+          creditsLeft: 1,
+          expiresAt: creditExpiry(now, CANCEL_CREDIT_VALID_DAYS),
+          appliesTo: [booking.session.offering.type],
+          source: "CANCELLATION",
+        },
+      });
+      creditReturned = true;
+      refund = "CREDIT";
+    } else if (cardRefundCase && input.refundChoice === "MONEY") {
+      refund = "MONEY";
+    }
+
     if (booking.status === "PENDING" && booking.orderId) {
       await tx.order.updateMany({
         where: { id: booking.orderId, status: "PENDING" },
         data: { status: "CANCELLED" },
       });
     }
-    return { ok: true, creditReturned, paidWith: booking.paidWith, early };
+    return { ok: true, creditReturned, paidWith: booking.paidWith, early, refund };
   }, TX_OPTIONS);
 }
 

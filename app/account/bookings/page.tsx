@@ -5,7 +5,7 @@ import { LocalTime } from "@/components/booking/LocalTime";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
 import { getMyBookings } from "@/lib/account-queries";
-import { CANCELLATION_HOURS, canCancel, isRefundable } from "@/lib/booking-rules";
+import { CANCELLATION_HOURS, CANCEL_CREDIT_VALID_DAYS, canCancel, isRefundable } from "@/lib/booking-rules";
 import { safeDb } from "@/lib/safe";
 import { requireUser } from "@/lib/session";
 
@@ -16,7 +16,12 @@ const NOTES: Record<string, { cls: string; text: string }> = {
   paid: { cls: "a-success", text: "Thank you. Your payment is being confirmed. Your booking shows as Confirmed in a moment." },
   returned: { cls: "a-success", text: "Your booking is cancelled and your credit was returned." },
   late: { cls: "a-warn", text: `Your booking is cancelled. It was less than ${CANCELLATION_HOURS} hours before the start, so the credit is not returned.` },
-  paid_cancel: { cls: "a-warn", text: "Your booking is cancelled. Refunds for card payments: the team will contact you. (Demo rule not decided yet.)" },
+  credit_given: { cls: "a-success", text: "Your booking is cancelled. We added 1 class credit to your account (see My credits)." },
+  refund_requested: { cls: "a-success", text: "Your booking is cancelled and your money-back request was sent. The order shows as Refunded when the card payment is returned." },
+  late_paid: { cls: "a-warn", text: `Your booking is cancelled. It was less than ${CANCELLATION_HOURS} hours before the start, so there is no credit and no refund.` },
+  choose: { cls: "a-error", text: "Please choose: a class credit or your money back." },
+  money_off: { cls: "a-warn", text: "Demo: money back is not active yet because the Stripe keys are not added. Nothing was changed. You can choose a class credit instead." },
+  refund_failed: { cls: "a-error", text: "We could not start the refund, so your booking was not cancelled. Please try again or contact us." },
   ok: { cls: "a-success", text: "Your booking is cancelled." },
   past: { cls: "a-error", text: "This class has already started and cannot be cancelled online." },
   error: { cls: "a-error", text: "Sorry, we could not cancel this booking." },
@@ -34,7 +39,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
   const user = await requireUser("/account/bookings");
   const sp = await searchParams;
   const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-  const noteKey = one(sp.booked) ? "booked" : one(sp.paid) ? "paid" : one(sp.cancel) === "paid" ? "paid_cancel" : (one(sp.cancel) ?? "");
+  const noteKey = one(sp.booked) ? "booked" : one(sp.paid) ? "paid" : (one(sp.cancel) ?? "");
   const note = NOTES[noteKey];
 
   const bookings = await safeDb("my bookings", async () => {
@@ -74,7 +79,43 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
         )}
         {b.status === "CONFIRMED" && !b.zoomUrl && b.location && <p style={{ margin: 0 }}>Place: {b.location}</p>}
         {b.status === "PENDING" && <p className="note">The Zoom link is shown after the payment is confirmed.</p>}
-        {active && (
+        {active && b.status === "CONFIRMED" && b.paidWith === "STRIPE" && early && (
+          <form action={cancelMyBooking} className="stack">
+            <input type="hidden" name="bookingId" value={b.id} />
+            <fieldset className="stack" style={{ gap: 8, border: 0, padding: 0, margin: 0 }}>
+              <legend className="legend" style={{ marginBottom: 6 }}>
+                Cancel this booking and get:
+              </legend>
+              <label className="optcard">
+                <span className="check radio">
+                  <input type="radio" name="refund" value="credit" defaultChecked />
+                  <span className="box" />
+                  <span className="txt">
+                    <b>1 class credit</b>
+                    <small>Use it for another booking. Valid for {CANCEL_CREDIT_VALID_DAYS / 7} weeks.</small>
+                  </span>
+                </span>
+              </label>
+              <label className="optcard">
+                <span className="check radio">
+                  <input type="radio" name="refund" value="money" />
+                  <span className="box" />
+                  <span className="txt">
+                    <b>Money back</b>
+                    <small>Refund to your card (can take a few days).</small>
+                  </span>
+                </span>
+              </label>
+            </fieldset>
+            <div className="row">
+              <p className="note">You cancel at least {CANCELLATION_HOURS} hours before the start.</p>
+              <button className="btn btn-outline btn-sm" type="submit">
+                Cancel booking
+              </button>
+            </div>
+          </form>
+        )}
+        {active && !(b.status === "CONFIRMED" && b.paidWith === "STRIPE" && early) && (
           <form action={cancelMyBooking} className="row">
             <input type="hidden" name="bookingId" value={b.id} />
             <p className="note">
@@ -82,7 +123,9 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
                 ? early
                   ? "Cancelling now returns your credit."
                   : `Less than ${CANCELLATION_HOURS} hours before the start: cancelling does not return your credit.`
-                : `You can cancel up to ${CANCELLATION_HOURS} hours before the start.`}
+                : b.paidWith === "STRIPE" && b.status === "CONFIRMED"
+                  ? `Less than ${CANCELLATION_HOURS} hours before the start: cancelling gives no credit and no refund.`
+                  : `You can cancel up to ${CANCELLATION_HOURS} hours before the start.`}
             </p>
             <button className="btn btn-outline btn-sm" type="submit">
               Cancel booking

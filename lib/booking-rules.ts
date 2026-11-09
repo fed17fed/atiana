@@ -9,6 +9,9 @@ import type { OfferingType } from "./generated/prisma/enums";
 /** The ONE place for the cancellation deadline (hours before the class starts). */
 export const CANCELLATION_HOURS = 24;
 
+/** Demo value (open question for the owner): a credit given for an early cancel of a card-paid booking is valid this long. */
+export const CANCEL_CREDIT_VALID_DAYS = 70;
+
 /** How long an unpaid seat is kept while the visitor pays (also the Stripe Checkout lifetime). */
 export const HOLD_MINUTES = 30;
 /** Extra minutes before a hold stops counting, so a payment that finishes at the last second still has its seat. */

@@ -63,12 +63,18 @@ export const packs: PackDef[] = [
   { name: "10-class pack", credits: 10, validDays: 112, validWeeks: 16, priceCents: 10500, note: "Best value" },
 ];
 
+/** 1:1 package (owner decision 2026-11-09): 5 sessions, EUR 300 demo price, credits valid 16 weeks. */
+export const oneToOnePacks: PackDef[] = [
+  { name: "5-session 1:1 package", credits: 5, validDays: 112, validWeeks: 16, priceCents: 30000, note: "€60 per session" },
+];
+
 /**
- * Weekly demo pattern (approved 2026-11-09): Tuesday, Friday, Sunday.
+ * Weekly demo pattern (approved 2026-11-09): Tuesday, Thursday, Friday, Sunday.
  * Times are Europe/Dublin wall-clock times. weekday: 0 = Sunday ... 6 = Saturday.
  */
 export const weeklyPattern = [
   { weekday: 2, hour: 18, minute: 0, classSlug: "beginners-introduction" },
+  { weekday: 4, hour: 12, minute: 30, classSlug: "breath-and-stillness" },
   { weekday: 5, hour: 7, minute: 30, classSlug: "morning-energy-class" },
   { weekday: 0, hour: 19, minute: 30, classSlug: "evening-transmission" },
 ] as const;

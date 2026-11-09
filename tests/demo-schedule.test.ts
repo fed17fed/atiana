@@ -6,11 +6,11 @@ const now = new Date("2026-11-09T12:00:00Z"); // Monday
 
 describe("demo group sessions", () => {
   const plan = planGroupSessions(now);
-  it("3 sessions per week for 8 weeks", () => expect(plan).toHaveLength(24));
-  it("only Tuesday 18:00, Friday 07:30 and Sunday 19:30 (Dublin time)", () => {
+  it("4 sessions per week for 8 weeks", () => expect(plan).toHaveLength(32));
+  it("only Tuesday 18:00, Thursday 12:30, Friday 07:30 and Sunday 19:30 (Dublin time)", () => {
     const seen = new Set(plan.map((s) => `${zonedParts(s.startsAt).weekday} ${formatTime(s.startsAt)} ${s.offeringSlug}`));
     expect([...seen].sort()).toEqual(
-      ["0 19:30 evening-transmission", "2 18:00 beginners-introduction", "5 07:30 morning-energy-class"].sort(),
+      ["4 12:30 breath-and-stillness", "0 19:30 evening-transmission", "2 18:00 beginners-introduction", "5 07:30 morning-energy-class"].sort(),
     );
   });
   it("keeps the local time through the clock change in March", () => {

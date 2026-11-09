@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Crumbs } from "@/components/ui/Crumbs";
-import { oneToOneOfferings } from "@/content/catalog";
+import { Suspense } from "react";
+import { PackBuyForm } from "@/components/booking/PackBuyForm";
+import { oneToOneOfferings, oneToOnePacks } from "@/content/catalog";
+import { getActivePackages } from "@/lib/catalog-queries";
+import { safeDb } from "@/lib/safe";
 import { CANCELLATION_HOURS } from "@/lib/booking-rules";
 import { formatEuro } from "@/lib/orders-service";
 
@@ -75,9 +79,13 @@ export default function OneToOnePage() {
         <div className="wrap prose-narrow">
           <h2 id="pack-h">5-session package</h2>
           <p>
-            Five sessions at a better price. Use your credits at any time while they are valid. Package price: [OWNER:
-            price, validity]. Credits are shown in your account.
+            Five sessions at a better price. Use your credits at any time while they are valid. Package price:{" "}
+            {formatEuro(oneToOnePacks[0].priceCents)} (demo price). Credits valid for {oneToOnePacks[0].validWeeks} weeks.
+            Credits are shown in your account.
           </p>
+          <Suspense fallback={<PackBuyForm packageId={null} name={oneToOnePacks[0].name} disabled />}>
+            <PackFromDb />
+          </Suspense>
           <h2>Good to know</h2>
           <ul style={{ display: "grid", gap: 8, listStyle: "disc", paddingLeft: "1.3em" }}>
             <li>
@@ -90,6 +98,20 @@ export default function OneToOnePage() {
           </ul>
         </div>
       </section>
+    </>
+  );
+}
+
+async function PackFromDb() {
+  const rows = await safeDb("1:1 packages", async () => {
+    const { prisma } = await import("@/lib/prisma");
+    return getActivePackages(prisma, "ONE_TO_ONE");
+  });
+  const pack = rows?.[0];
+  return (
+    <>
+      {!pack && <p className="hint">Demo: buying the package is not available yet because the database for this demo site is not ready.</p>}
+      <PackBuyForm packageId={pack?.id ?? null} name={pack?.name ?? oneToOnePacks[0].name} disabled={!pack} />
     </>
   );
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   createCheckoutSession,
+  makeRefunder,
   processStripeEvent,
   stripeConfig,
   verifyWebhook,
@@ -225,5 +226,46 @@ describe("verifyWebhook", () => {
       throw new Error("No signatures found matching");
     });
     expect(() => verifyWebhook({ webhooks: { constructEvent } } as never, "RAW", "bad", "whsec")).toThrow();
+  });
+});
+
+describe("charge.refunded and refunds", () => {
+  const refundedEvent = (id = "evt_r", refunded = true): StripeEventLike => ({
+    id,
+    type: "charge.refunded",
+    data: { object: { payment_intent: "pi_1", refunded } },
+  });
+  const paidDb = () => {
+    const f = fakeDb({ order: { id: "ord_1", userId: "u1", status: "PAID", totalCents: 1500 }, items: [] });
+    return f;
+  };
+
+  it("order becomes REFUNDED only when Stripe confirms a full refund (and only once)", async () => {
+    const { db, state } = paidDb();
+    expect((await processStripeEvent(db, refundedEvent("evt_r1", false))).status).toBe("ignored");
+    expect(state.order.status).toBe("PAID");
+    expect((await processStripeEvent(db, refundedEvent("evt_r2"))).status).toBe("refunded");
+    expect(state.order.status).toBe("REFUNDED");
+    expect((await processStripeEvent(db, refundedEvent("evt_r2"))).status).toBe("duplicate");
+    expect((await processStripeEvent(db, refundedEvent("evt_r3"))).status).toBe("ignored");
+  });
+
+  it("makeRefunder uses the saved payment intent and one idempotency key per booking", async () => {
+    const create = vi.fn().mockResolvedValue({});
+    const retrieve = vi.fn();
+    const db = { order: { findUnique: async () => ({ id: "o1", status: "PAID", stripePaymentIntentId: "pi_9", stripeSessionId: "cs_9" }) } };
+    await makeRefunder({ refunds: { create }, checkout: { sessions: { retrieve } } } as never, db as never)({ orderId: "o1", bookingId: "b1" });
+    expect(create).toHaveBeenCalledWith({ payment_intent: "pi_9", metadata: { orderId: "o1", bookingId: "b1" } }, { idempotencyKey: "refund-booking-b1" });
+    expect(retrieve).not.toHaveBeenCalled();
+  });
+
+  it("makeRefunder falls back to the Checkout Session, and refuses unpaid orders", async () => {
+    const create = vi.fn().mockResolvedValue({});
+    const retrieve = vi.fn().mockResolvedValue({ payment_intent: "pi_from_session" });
+    const stripe = { refunds: { create }, checkout: { sessions: { retrieve } } } as never;
+    const db = (status: string) => ({ order: { findUnique: async () => ({ id: "o1", status, stripePaymentIntentId: null, stripeSessionId: "cs_9" }) } }) as never;
+    await makeRefunder(stripe, db("PAID"))({ orderId: "o1", bookingId: "b1" });
+    expect(create.mock.calls[0][0].payment_intent).toBe("pi_from_session");
+    await expect(makeRefunder(stripe, db("PENDING"))({ orderId: "o1", bookingId: "b1" })).rejects.toThrow();
   });
 });

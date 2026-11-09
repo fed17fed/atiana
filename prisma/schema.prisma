@@ -52,6 +52,7 @@ enum CreditSource {
   PURCHASE
   REFERRAL
   ADMIN
+  CANCELLATION // 1 credit given when a card-paid booking was cancelled early (client chose credit)
 }
 
 enum ProductType {
@@ -310,28 +311,30 @@ model ProductImage {
 }
 
 model Order {
-  id              String        @id @default(cuid())
-  userId          String? // guests may pay (shop, donations): then email is used
-  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  email           String
-  status          OrderStatus   @default(PENDING)
-  currency        String        @default("EUR")
-  subtotalCents   Int           @default(0)
-  shippingCents   Int           @default(0)
-  discountCents   Int           @default(0)
-  totalCents      Int           @default(0)
-  discountCodeId  String?
-  discountCode    DiscountCode? @relation(fields: [discountCodeId], references: [id], onDelete: SetNull)
-  stripeSessionId String?       @unique
-  paidAt          DateTime?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  id                    String        @id @default(cuid())
+  userId                String? // guests may pay (shop, donations): then email is used
+  user                  User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  email                 String
+  status                OrderStatus   @default(PENDING)
+  currency              String        @default("EUR")
+  subtotalCents         Int           @default(0)
+  shippingCents         Int           @default(0)
+  discountCents         Int           @default(0)
+  totalCents            Int           @default(0)
+  discountCodeId        String?
+  discountCode          DiscountCode? @relation(fields: [discountCodeId], references: [id], onDelete: SetNull)
+  stripeSessionId       String?       @unique
+  stripePaymentIntentId String? // saved by the webhook; used for refunds
+  paidAt                DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 
   items    OrderItem[]
   bookings Booking[]
 
   @@index([userId])
   @@index([email])
+  @@index([stripePaymentIntentId])
 }
 
 model OrderItem {

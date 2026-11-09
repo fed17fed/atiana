@@ -69,7 +69,8 @@ export type ProcessResult =
   | { status: "ignored"; reason: string }
   | { status: "paid"; orderId: string; confirmedBookingIds: string[]; grantIds: string[] }
   | { status: "already-paid"; orderId: string }
-  | { status: "cancelled"; orderId: string };
+  | { status: "cancelled"; orderId: string }
+  | { status: "refunded"; orderId: string };
 
 type Tx = Prisma.TransactionClient;
 
@@ -88,6 +89,16 @@ export async function processStripeEvent(
     });
     if (inserted.count === 0) return { status: "duplicate" };
 
+    if (event.type === "charge.refunded") {
+      // Stripe confirms the money went back: only now the order becomes REFUNDED.
+      const charge = event.data.object as { payment_intent?: string | null; refunded?: boolean };
+      if (!charge.payment_intent || charge.refunded !== true) return { status: "ignored", reason: "refund not complete" };
+      const found = await tx.order.findFirst({ where: { stripePaymentIntentId: charge.payment_intent } });
+      if (!found) return { status: "ignored", reason: "order not found" };
+      const r = await tx.order.updateMany({ where: { id: found.id, status: "PAID" }, data: { status: "REFUNDED" } });
+      return r.count === 1 ? { status: "refunded", orderId: found.id } : { status: "ignored", reason: "order is not paid" };
+    }
+
     if (event.type !== "checkout.session.completed" && event.type !== "checkout.session.expired") {
       return { status: "ignored", reason: `event type ${event.type} is not used` };
     }
@@ -96,6 +107,7 @@ export async function processStripeEvent(
       id?: string;
       client_reference_id?: string | null;
       payment_status?: string;
+      payment_intent?: string | null;
       amount_total?: number | null;
       currency?: string | null;
     };
@@ -139,7 +151,12 @@ export async function processStripeEvent(
     // Only one caller can change PENDING -> PAID. A cancelled (expired hold) order that was paid is also accepted.
     const paid = await tx.order.updateMany({
       where: { id: order.id, status: { in: ["PENDING", "CANCELLED"] } },
-      data: { status: "PAID", paidAt: now, stripeSessionId: stripeSessionId ?? order.stripeSessionId },
+      data: {
+        status: "PAID",
+        paidAt: now,
+        stripeSessionId: stripeSessionId ?? order.stripeSessionId,
+        ...(typeof obj.payment_intent === "string" ? { stripePaymentIntentId: obj.payment_intent } : {}),
+      },
     });
     if (paid.count !== 1) return { status: "already-paid", orderId: order.id };
 
@@ -199,4 +216,28 @@ export function verifyWebhook(
 ): StripeEventLike {
   if (!signature) throw new Error("Missing stripe-signature header");
   return stripe.webhooks.constructEvent(rawBody, signature, secret) as unknown as StripeEventLike;
+}
+
+/**
+ * Builds the refund function for cancelBooking. One idempotency key per booking: asking twice gives the same refund.
+ * The payment intent comes from the order (saved by the webhook) or, if missing, from the Checkout Session.
+ */
+export function makeRefunder(
+  stripe: Pick<Stripe, "refunds" | "checkout">,
+  db: Pick<PrismaClient, "order">,
+) {
+  return async ({ orderId, bookingId }: { orderId: string; bookingId: string }) => {
+    const order = await db.order.findUnique({ where: { id: orderId } });
+    if (!order || order.status !== "PAID") throw new Error("Order is not paid");
+    let paymentIntent = order.stripePaymentIntentId;
+    if (!paymentIntent && order.stripeSessionId) {
+      const s = await stripe.checkout.sessions.retrieve(order.stripeSessionId);
+      paymentIntent = typeof s.payment_intent === "string" ? s.payment_intent : (s.payment_intent?.id ?? null);
+    }
+    if (!paymentIntent) throw new Error("No payment found for this order");
+    await stripe.refunds.create(
+      { payment_intent: paymentIntent, metadata: { orderId, bookingId } },
+      { idempotencyKey: `refund-booking-${bookingId}` },
+    );
+  };
 }

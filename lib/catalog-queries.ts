@@ -102,8 +102,8 @@ export async function getOneToOneSlots(db: PrismaClient, opts: { mode?: Mode; no
   return rows.map(toItem);
 }
 
-export async function getActivePackages(db: PrismaClient) {
-  return db.package.findMany({ where: { active: true }, orderBy: { priceCents: "asc" } });
+export async function getActivePackages(db: PrismaClient, type: "GROUP_CLASS" | "ONE_TO_ONE" = "GROUP_CLASS") {
+  return db.package.findMany({ where: { active: true, appliesTo: { has: type } }, orderBy: { priceCents: "asc" } });
 }
 
 /** Sessions (of the given ids) that this user already holds a seat in. */

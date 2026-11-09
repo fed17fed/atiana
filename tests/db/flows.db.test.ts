@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "@/lib/generated/prisma/client";
-import { createBooking } from "@/lib/booking-service";
+import { cancelBooking, createBooking } from "@/lib/booking-service";
 import { processStripeEvent } from "@/lib/stripe-service";
 import { createPackageOrder } from "@/lib/orders-service";
 import { getMyBookings, getMyCredits, getMyOrders } from "@/lib/account-queries";
@@ -151,5 +151,95 @@ d("admin adds 1:1 slots", () => {
     expect((await addOneToOneSlots(db, { ...form, offeringId: groupId }, now)).ok).toBe(false);
     expect((await addOneToOneSlots(db, { ...form, time: "25:99" }, now)).ok).toBe(false);
     expect((await getOneToOneSlots(db, { now: new Date("2039-01-01T00:00:00Z") })).every((s) => s.capacity === 1)).toBe(true);
+  }, 60_000);
+});
+
+d("cancel a card-paid booking: client chooses credit or money", () => {
+  const H = 3600_000;
+  async function paidBooking(userN: number) {
+    const u = await testUser(db, userN);
+    const s = await newSession(db, groupId, 5);
+    const r = await createBooking(db, { userId: u.id, sessionId: s.id, method: "STRIPE", disclaimerAccepted: true });
+    if (!r.ok) throw new Error("setup");
+    await processStripeEvent(db, { id: unique("evt"), type: "checkout.session.completed", data: { object: { id: `cs_${unique("x")}`, client_reference_id: r.orderId, payment_status: "paid", amount_total: 1500, payment_intent: unique("pi") } } });
+    return { u, s, r };
+  }
+  const early = (s: { startsAt: Date }) => new Date(s.startsAt.getTime() - 30 * H);
+  const late = (s: { startsAt: Date }) => new Date(s.startsAt.getTime() - 10 * H);
+
+  it("early + credit: booking cancelled, exactly 1 new credit of the right type and expiry", async () => {
+    const { u, s, r } = await paidBooking(1);
+    const now = early(s);
+    const c = await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now, refundChoice: "CREDIT" });
+    expect(c).toMatchObject({ ok: true, refund: "CREDIT", creditReturned: true });
+    expect((await db.booking.findUniqueOrThrow({ where: { id: r.bookingId } })).status).toBe("CANCELLED");
+    const g = await db.creditGrant.findMany({ where: { userId: u.id, source: "CANCELLATION", createdAt: { gte: new Date(Date.now() - 120_000) } } });
+    expect(g).toHaveLength(1);
+    expect(g[0]).toMatchObject({ creditsTotal: 1, creditsLeft: 1 });
+    expect(g[0].appliesTo).toEqual(["GROUP_CLASS"]);
+    expect(g[0].expiresAt?.toISOString()).toBe(new Date(now.getTime() + 70 * 86400_000).toISOString());
+  }, 60_000);
+
+  it("double submit (parallel): only one credit is given", async () => {
+    const { u, s, r } = await paidBooking(2);
+    const now = early(s);
+    const before = await db.creditGrant.count({ where: { userId: u.id, source: "CANCELLATION" } });
+    const res = await Promise.all([1, 2, 3].map(() => cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now, refundChoice: "CREDIT" })));
+    expect(res.filter((x) => x.ok)).toHaveLength(1);
+    expect(await db.creditGrant.count({ where: { userId: u.id, source: "CANCELLATION" } })).toBe(before + 1);
+  }, 60_000);
+
+  it("early + money: Stripe refund called once with the booking id, booking cancelled, order stays PAID until the webhook", async () => {
+    const { u, s, r } = await paidBooking(3);
+    const refund = vi.fn().mockResolvedValue(undefined);
+    const c = await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now: early(s), refundChoice: "MONEY", refund });
+    expect(c).toMatchObject({ ok: true, refund: "MONEY", creditReturned: false });
+    expect(refund).toHaveBeenCalledTimes(1);
+    expect(refund).toHaveBeenCalledWith({ orderId: r.orderId, bookingId: r.bookingId });
+    expect((await db.booking.findUniqueOrThrow({ where: { id: r.bookingId } })).status).toBe("CANCELLED");
+    expect((await db.order.findUniqueOrThrow({ where: { id: r.orderId! } })).status).toBe("PAID");
+    // Stripe confirms later:
+    const pi = (await db.order.findUniqueOrThrow({ where: { id: r.orderId! } })).stripePaymentIntentId!;
+    expect((await processStripeEvent(db, { id: unique("evt"), type: "charge.refunded", data: { object: { payment_intent: pi, refunded: true } } })).status).toBe("refunded");
+    expect((await db.order.findUniqueOrThrow({ where: { id: r.orderId! } })).status).toBe("REFUNDED");
+    // second submit: nothing more happens
+    expect(await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now: early(s), refundChoice: "MONEY", refund })).toEqual({ ok: false, code: "NOT_ACTIVE" });
+    expect(refund).toHaveBeenCalledTimes(1);
+  }, 60_000);
+
+  it("money without Stripe: REFUND_OFF, booking unchanged; Stripe failure: REFUND_FAILED, booking unchanged", async () => {
+    const { u, s, r } = await paidBooking(4);
+    expect(await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now: early(s), refundChoice: "MONEY" })).toEqual({ ok: false, code: "REFUND_OFF" });
+    const bad = vi.fn().mockRejectedValue(new Error("stripe down"));
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now: early(s), refundChoice: "MONEY", refund: bad })).toEqual({ ok: false, code: "REFUND_FAILED" });
+    spy.mockRestore();
+    expect((await db.booking.findUniqueOrThrow({ where: { id: r.bookingId } })).status).toBe("CONFIRMED");
+  }, 60_000);
+
+  it("early without a choice: CHOICE_REQUIRED, booking unchanged", async () => {
+    const { u, s, r } = await paidBooking(5);
+    expect(await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now: early(s) })).toEqual({ ok: false, code: "CHOICE_REQUIRED" });
+    expect((await db.booking.findUniqueOrThrow({ where: { id: r.bookingId } })).status).toBe("CONFIRMED");
+  }, 60_000);
+
+  it("under 24 h: no credit, no refund, Stripe is not called (even if money is chosen)", async () => {
+    const { u, s, r } = await paidBooking(6);
+    const refund = vi.fn();
+    const before = await db.creditGrant.count({ where: { userId: u.id, source: "CANCELLATION" } });
+    const c = await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now: late(s), refundChoice: "MONEY", refund });
+    expect(c).toMatchObject({ ok: true, early: false, refund: null, creditReturned: false });
+    expect(refund).not.toHaveBeenCalled();
+    expect(await db.creditGrant.count({ where: { userId: u.id, source: "CANCELLATION" } })).toBe(before);
+  }, 60_000);
+
+  it("another user cannot cancel or refund my booking", async () => {
+    const { s, r } = await paidBooking(1);
+    const other = await testUser(db, 2);
+    const refund = vi.fn();
+    expect(await cancelBooking(db, { userId: other.id, bookingId: r.bookingId, now: early(s), refundChoice: "MONEY", refund })).toEqual({ ok: false, code: "NOT_FOUND" });
+    expect(await cancelBooking(db, { userId: other.id, bookingId: r.bookingId, now: early(s), refundChoice: "CREDIT" })).toEqual({ ok: false, code: "NOT_FOUND" });
+    expect(refund).not.toHaveBeenCalled();
+    expect((await db.booking.findUniqueOrThrow({ where: { id: r.bookingId } })).status).toBe("CONFIRMED");
   }, 60_000);
 });
