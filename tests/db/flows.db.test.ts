@@ -170,10 +170,11 @@ d("cancel a card-paid booking: client chooses credit or money", () => {
   it("early + credit: booking cancelled, exactly 1 new credit of the right type and expiry", async () => {
     const { u, s, r } = await paidBooking(1);
     const now = early(s);
+    const knownBefore = (await db.creditGrant.findMany({ where: { userId: u.id, source: "CANCELLATION" }, select: { id: true } })).map((x) => x.id);
     const c = await cancelBooking(db, { userId: u.id, bookingId: r.bookingId, now, refundChoice: "CREDIT" });
     expect(c).toMatchObject({ ok: true, refund: "CREDIT", creditReturned: true });
     expect((await db.booking.findUniqueOrThrow({ where: { id: r.bookingId } })).status).toBe("CANCELLED");
-    const g = await db.creditGrant.findMany({ where: { userId: u.id, source: "CANCELLATION", createdAt: { gte: new Date(Date.now() - 120_000) } } });
+    const g = (await db.creditGrant.findMany({ where: { userId: u.id, source: "CANCELLATION" } })).filter((x) => !knownBefore.includes(x.id));
     expect(g).toHaveLength(1);
     expect(g[0]).toMatchObject({ creditsTotal: 1, creditsLeft: 1 });
     expect(g[0].appliesTo).toEqual(["GROUP_CLASS"]);
