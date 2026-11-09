@@ -34,3 +34,16 @@ export function LocalTime({ iso, format = "dayTime" }: { iso: string; format?: F
   const tz = useVisitorTimeZone();
   return <time dateTime={iso}>{formatFor(iso, tz, format)}</time>;
 }
+
+/** "Wed 9 Dec 2026 · 19:00–20:00" in the visitor's time zone. */
+export function LocalRange({ startIso, endIso }: { startIso: string; endIso: string }) {
+  const tz = useVisitorTimeZone();
+  const s = new Date(startIso);
+  const day = new Intl.DateTimeFormat("en-IE", { timeZone: tz, weekday: "short", day: "numeric", month: "short", year: "numeric" }).formatToParts(s);
+  const g = (t: string) => day.find((p) => p.type === t)?.value ?? "";
+  return (
+    <time dateTime={startIso}>
+      {g("weekday")} {g("day")} {g("month")} {g("year")} · {formatTime(s, tz)}–{formatTime(new Date(endIso), tz)}
+    </time>
+  );
+}

@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { cancelBooking } from "@/lib/booking-service";
+import { cancelEventRegistration } from "@/lib/event-service";
 import { getCurrentUser } from "@/lib/session";
 import { getStripe, makeRefunder, stripeConfig } from "@/lib/stripe-service";
 
@@ -41,6 +42,33 @@ export async function cancelMyBooking(formData: FormData): Promise<void> {
     }
   } catch (error) {
     console.error("[cancel] failed", error instanceof Error ? error.message : error);
+  }
+  redirect(`/account/bookings?cancel=${outcome}`);
+}
+
+/** Cancels MY place at an event. Rules (7 days for tickets, donations never refunded) live in lib/event-service.ts. */
+export async function cancelMyEventPlace(formData: FormData): Promise<void> {
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=%2Faccount%2Fbookings");
+  const parsed = z.object({ bookingId: z.string().trim().min(1).max(60) }).safeParse(Object.fromEntries(formData.entries()));
+  if (!parsed.success) redirect("/account/bookings?cancel=error");
+
+  const stripeCfg = stripeConfig();
+  const { prisma } = await import("@/lib/prisma");
+  let outcome = "error";
+  try {
+    const r = await cancelEventRegistration(prisma, {
+      userId: user.id,
+      bookingId: parsed.data.bookingId,
+      refund: stripeCfg ? makeRefunder(getStripe(stripeCfg.secretKey), prisma) : undefined,
+    });
+    if (r.ok) {
+      outcome = r.reason === "TICKET_EARLY" ? "event_refund" : r.reason === "TICKET_LATE" ? "event_no_refund" : "event_done";
+    } else {
+      outcome = r.code === "PAST" ? "past" : r.code === "REFUND_OFF" ? "event_money_off" : r.code === "REFUND_FAILED" ? "refund_failed" : "error";
+    }
+  } catch (error) {
+    console.error("[event cancel] failed", error instanceof Error ? error.message : error);
   }
   redirect(`/account/bookings?cancel=${outcome}`);
 }

@@ -189,3 +189,32 @@ details.code summary{cursor:pointer;color:var(--color-ember-deep);font-weight:70
 .acc-card h2 { margin: 0; font-size: 1.2rem; line-height: 1.25; }
 .pack-mini h2 { font-size: 1.5rem; margin-bottom: 6px; }
 .empty h2 { font-size: 1.5rem; margin-bottom: 6px; }
+
+/* ---- events ---- */
+.card h2 a.stretched { color: inherit; text-decoration: none; }
+.card h2 a.stretched::after { content: ""; position: absolute; inset: 0; }
+.ev-grid { display: grid; gap: 20px; }
+@media (min-width: 700px) { .ev-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .ev-grid { grid-template-columns: repeat(3, 1fr); } }
+.ev-detail { display: grid; gap: 28px; padding: 8px 0 72px; }
+@media (min-width: 960px) { .ev-detail { grid-template-columns: 1fr 380px; gap: 48px; align-items: start; } .ev-side { position: sticky; top: 96px; } }
+.ev-detail > * { min-width: 0; }
+.ev-photo { border-radius: var(--radius-card); overflow: hidden; background: var(--color-sand); box-shadow: var(--shadow-soft); }
+.ev-photo img { width: 100%; height: auto; display: block; }
+.ev-facts { display: grid; gap: 10px; background: var(--color-sand); border-radius: var(--radius-tile); padding: 18px 20px; margin: 0; }
+.ev-facts div { display: flex; gap: 12px; justify-content: space-between; }
+.ev-facts dt { color: var(--color-muted); }
+.ev-facts dd { margin: 0; font-weight: 700; text-align: right; }
+.ev-panel { background: #fff; border: 1px solid var(--color-line); border-radius: var(--radius-card); padding: 22px; display: grid; gap: 16px; }
+.ev-panel h2 { font-size: 1.5rem; margin: 0; }
+.amount-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.amount-row button { min-height: 44px; padding: 8px 18px; border-radius: var(--radius-pill); border: 1.5px solid var(--color-plum); background: transparent; font-weight: 700; cursor: pointer; }
+.amount-row button:hover { background: var(--color-sand); }
+.amount-row button[aria-pressed="true"] { background: var(--color-plum); color: var(--color-cream); }
+.ev-bar { display: none; }
+@media (max-width: 959px) {
+  .ev-bar { display: flex; position: sticky; bottom: 0; z-index: 90; background: var(--color-cream); border-top: 1px solid var(--color-line); padding: 10px 20px; justify-content: center; }
+  .ev-bar .btn { width: 100%; max-width: 480px; }
+}
+.ev-photo img { aspect-ratio: 16 / 10; object-fit: cover; }
+.card .foot { flex-wrap: wrap; }

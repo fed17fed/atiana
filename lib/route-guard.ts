@@ -50,3 +50,16 @@ export async function guardBookClass(
     return { action: "next" };
   }
 }
+
+/** /events/<slug>: only known events exist. Anything else must be a real HTTP 404 (not a 200 page). */
+export function guardEventSlug(pathname: string, knownSlugs: readonly string[]): { action: "next" } | { action: "not-found" } {
+  const m = /^\/events\/([^/]+)\/?$/.exec(pathname);
+  if (!m) return { action: "next" };
+  let slug = m[1];
+  try {
+    slug = decodeURIComponent(slug);
+  } catch {
+    return { action: "not-found" };
+  }
+  return knownSlugs.includes(slug) ? { action: "next" } : { action: "not-found" };
+}

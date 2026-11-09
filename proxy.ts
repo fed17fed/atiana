@@ -1,8 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { guardBookClass, guardRoute, SESSION_COOKIES } from "@/lib/route-guard";
+import { events } from "@/content/events";
+import { guardBookClass, guardEventSlug, guardRoute, SESSION_COOKIES } from "@/lib/route-guard";
 
 export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  if (pathname.startsWith("/events/")) {
+    if (guardEventSlug(pathname, events.map((e) => e.slug)).action === "not-found") {
+      return NextResponse.rewrite(new URL("/booking-not-found", req.url));
+    }
+    return NextResponse.next();
+  }
   if (pathname === "/book/class") {
     const g = await guardBookClass(pathname, req.nextUrl.searchParams.get("session"), async (id) => {
       const { prisma } = await import("@/lib/prisma");
@@ -44,4 +51,4 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/account/:path*", "/admin/:path*", "/book/class"] };
+export const config = { matcher: ["/account/:path*", "/admin/:path*", "/book/class", "/events/:slug"] };

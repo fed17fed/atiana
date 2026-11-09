@@ -52,3 +52,21 @@ describe("guardBookClass (real 404)", () => {
     expect(await guardBookClass("/book/class", "ok", () => Promise.reject(new Error("db")))).toEqual({ action: "next" });
   });
 });
+
+import { guardEventSlug } from "@/lib/route-guard";
+
+describe("guardEventSlug (real 404)", () => {
+  const known = ["winter-breath-hour", "slow-morning-by-the-hills"];
+  it("known slug passes, also with a trailing slash", () => {
+    expect(guardEventSlug("/events/winter-breath-hour", known)).toEqual({ action: "next" });
+    expect(guardEventSlug("/events/winter-breath-hour/", known)).toEqual({ action: "next" });
+  });
+  it("unknown or broken slug is a 404", () => {
+    expect(guardEventSlug("/events/nope", known)).toEqual({ action: "not-found" });
+    expect(guardEventSlug("/events/%E0%A4%A", known)).toEqual({ action: "not-found" });
+  });
+  it("the list page and the calendar file are not touched", () => {
+    expect(guardEventSlug("/events", known)).toEqual({ action: "next" });
+    expect(guardEventSlug("/events/winter-breath-hour/calendar.ics", known)).toEqual({ action: "next" });
+  });
+});

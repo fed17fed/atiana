@@ -332,7 +332,7 @@ export default function Home() {
       </section>
 
       {/* Newsletter band (UI only) */}
-      <section className="sec dark on-dark" aria-labelledby="nl-h">
+      <section className="sec dark on-dark" id="newsletter" aria-labelledby="nl-h">
         <div className="wrap nl-band">
           <div>
             <p className="eyebrow">Newsletter</p>
