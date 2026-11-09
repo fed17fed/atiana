@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
+@import "./site.css" layer(components);
 
 /* Extra breakpoint from the hi-fi design: full desktop header from 1100 px (tablets use the menu button). */
 @theme {
