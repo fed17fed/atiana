@@ -24,6 +24,13 @@ enum OfferingType {
   EVENT
 }
 
+// How an EVENT offering is paid (null for classes and 1:1)
+enum EventPricing {
+  FREE
+  DONATION
+  PAID
+}
+
 enum Mode {
   ONLINE
   IN_PERSON
@@ -164,18 +171,19 @@ model VerificationToken {
 // ---------- Offerings, sessions, prices ----------
 
 model Offering {
-  id        String       @id @default(cuid())
-  type      OfferingType
-  title     String
-  slug      String       @unique
-  summary   String       @default("")
-  body      String       @default("") // markdown
-  image     String?
-  mode      Mode         @default(ONLINE)
-  location  String?
-  published Boolean      @default(false)
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id           String        @id @default(cuid())
+  type         OfferingType
+  title        String
+  slug         String        @unique
+  summary      String        @default("")
+  body         String        @default("") // markdown
+  image        String?
+  mode         Mode          @default(ONLINE)
+  location     String?
+  published    Boolean       @default(false)
+  eventPricing EventPricing? // only for type EVENT
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   sessions     ClassSession[]
   priceOptions PriceOption[]

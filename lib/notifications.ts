@@ -1,6 +1,6 @@
 /** Emails about bookings. They go out through lib/mail.ts (logged only when Resend is off). */
 import type { PrismaClient } from "./generated/prisma/client";
-import { CANCELLATION_HOURS } from "./booking-rules";
+import { CANCELLATION_HOURS, EVENT_REFUND_DAYS } from "./booking-rules";
 import { sendMail } from "./mail";
 import { BUSINESS_TZ, formatDateTime } from "./time";
 
@@ -8,7 +8,7 @@ type SessionForMail = {
   startsAt: Date;
   zoomUrl: string | null;
   location: string | null;
-  offering: { title: string; mode: "ONLINE" | "IN_PERSON"; location: string | null };
+  offering: { title: string; mode: "ONLINE" | "IN_PERSON"; location: string | null; type?: string; eventPricing?: string | null };
 };
 
 export function buildBookingMail(
@@ -38,7 +38,11 @@ export function buildBookingMail(
     when,
     where,
     "",
-    `You can cancel up to ${CANCELLATION_HOURS} hours before the start in My account.`,
+    s.offering.type === "EVENT"
+      ? s.offering.eventPricing === "PAID"
+        ? `Cancel up to ${EVENT_REFUND_DAYS} days before the event and get your money back. You can cancel in My account.`
+        : "You can cancel any time before the event starts in My account."
+      : `You can cancel up to ${CANCELLATION_HOURS} hours before the start in My account.`,
     "",
     "KEA by Atiana (demo site)",
   ].join("\n");

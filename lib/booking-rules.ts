@@ -9,6 +9,14 @@ import type { OfferingType } from "./generated/prisma/enums";
 /** The ONE place for the cancellation deadline (hours before the class starts). */
 export const CANCELLATION_HOURS = 24;
 
+/** Paid events: money back when the client cancels this many days (or more) before the start. Owner rule 2026-11-09. */
+export const EVENT_REFUND_DAYS = 7;
+
+/** Stripe cannot charge less than EUR 0.50. Donations above 0 but below this cannot go through Stripe. */
+export const MIN_CARD_PAYMENT_CENTS = 50;
+/** Safety limit for one donation (demo value, open question for the owner). */
+export const MAX_DONATION_CENTS = 100_000;
+
 /** Demo value (open question for the owner): a credit given for an early cancel of a card-paid booking is valid this long. */
 export const CANCEL_CREDIT_VALID_DAYS = 70;
 
@@ -28,6 +36,23 @@ export function refundDeadline(startsAt: Date, hours = CANCELLATION_HOURS): Date
 /** True when `now` is at or before the deadline (exactly 24 h before still counts). */
 export function isRefundable(startsAt: Date, now: Date, hours = CANCELLATION_HOURS): boolean {
   return now.getTime() <= refundDeadline(startsAt, hours).getTime();
+}
+
+/** Last moment a cancellation of a paid event still gives the money back. */
+export function eventRefundDeadline(startsAt: Date, days = EVENT_REFUND_DAYS): Date {
+  return new Date(startsAt.getTime() - days * 24 * HOUR_MS);
+}
+
+/** 7 days or more before the start (exactly 7 days counts). */
+export function isEventRefundable(startsAt: Date, now: Date, days = EVENT_REFUND_DAYS): boolean {
+  return now.getTime() <= eventRefundDeadline(startsAt, days).getTime();
+}
+
+/** Euros typed by the client ("10", "10.5", "0") -> cents. Returns null when it is not a valid amount of 0 or more. */
+export function parseEuroToCents(input: string): number | null {
+  const t = input.trim().replace(",", ".");
+  if (!/^\d{1,6}(\.\d{1,2})?$/.test(t)) return null;
+  return Math.round(Number.parseFloat(t) * 100);
 }
 
 /** A class that already started (or ended) cannot be cancelled online. */

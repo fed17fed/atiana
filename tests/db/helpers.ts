@@ -40,6 +40,20 @@ export async function testOffering(db: PrismaClient, kind: "GROUP_CLASS" | "ONE_
   return o;
 }
 
+/** Hidden event offering for tests (FREE, DONATION or PAID with a EUR 45 ticket). */
+export async function testEventOffering(db: PrismaClient, pricing: "FREE" | "DONATION" | "PAID") {
+  const slug = `zz-dbtest-event-${pricing.toLowerCase()}`;
+  await db.offering.createMany({
+    data: [{ slug, type: "EVENT", title: `ZZ DB test event ${pricing}`, published: true, mode: "ONLINE", eventPricing: pricing }],
+    skipDuplicates: true,
+  });
+  const o = await db.offering.update({ where: { slug }, data: { published: true, eventPricing: pricing } });
+  if (pricing === "PAID" && !(await db.priceOption.findFirst({ where: { offeringId: o.id } }))) {
+    await db.priceOption.create({ data: { offeringId: o.id, name: "Ticket", amountCents: 4500 } });
+  }
+  return o;
+}
+
 /** A new far-future session (year 2040) with a random start so runs never collide. */
 export async function newSession(db: PrismaClient, offeringId: string, capacity: number, startsAt?: Date) {
   const start = startsAt ?? new Date(Date.UTC(2040, 0, 1) + Math.floor(Math.random() * 3e8) * 1000);

@@ -5,7 +5,7 @@ export async function getMyBookings(db: PrismaClient, userId: string) {
   const rows = await db.booking.findMany({
     where: { userId },
     orderBy: { session: { startsAt: "desc" } },
-    include: { session: { include: { offering: true } }, creditGrant: { select: { expiresAt: true, expiredAt: true } } },
+    include: { session: { include: { offering: true } }, creditGrant: { select: { expiresAt: true, expiredAt: true } }, order: { select: { status: true, items: { select: { type: true, totalCents: true } } } } },
   });
   const now = new Date();
   return rows.map((b) => ({
@@ -21,6 +21,13 @@ export async function getMyBookings(db: PrismaClient, userId: string) {
     zoomUrl: b.status === "CONFIRMED" ? b.session.zoomUrl : null,
     location: b.status === "CONFIRMED" ? (b.session.location ?? b.session.offering.location) : null,
     createdAt: b.createdAt,
+    sessionCancelled: b.session.status === "CANCELLED",
+    eventPricing: b.session.offering.eventPricing,
+    eventSlug: b.session.offering.slug,
+    /** A donation was paid (it is never refunded). */
+    donationPaid: b.order?.status === "PAID" && b.order.items.some((i) => i.type === "DONATION"),
+    ticketPaid: b.order?.status === "PAID" && b.order.items.some((i) => i.type === "EVENT"),
+    orderStatus: b.order?.status ?? null,
     /** True when the credit used for this booking has expired (it cannot be returned on cancel). */
     creditExpired:
       b.paidWith === "CREDIT" &&

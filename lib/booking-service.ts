@@ -240,9 +240,9 @@ export async function cancelBooking(
   if (input.refundChoice === "MONEY") {
     const pre = await db.booking.findFirst({
       where: { id: input.bookingId, userId: input.userId },
-      include: { session: true },
+      include: { session: { include: { offering: true } } },
     });
-    if (pre && canCancel(pre.session.startsAt, now) && isEarlyCardPaid(pre) && pre.orderId) {
+    if (pre && pre.session.offering.type !== "EVENT" && canCancel(pre.session.startsAt, now) && isEarlyCardPaid(pre) && pre.orderId) {
       if (!input.refund) return { ok: false, code: "REFUND_OFF" };
       try {
         await input.refund({ orderId: pre.orderId, bookingId: pre.id });
@@ -259,7 +259,8 @@ export async function cancelBooking(
       where: { id: input.bookingId, userId: input.userId },
       include: { session: { include: { offering: true } } },
     });
-    if (!booking) return { ok: false, code: "NOT_FOUND" };
+    // Events have their own cancel rules (cancelEventRegistration): never use the class rules for them.
+    if (!booking || booking.session.offering.type === "EVENT") return { ok: false, code: "NOT_FOUND" };
     if (booking.status !== "PENDING" && booking.status !== "CONFIRMED") {
       return { ok: false, code: "NOT_ACTIVE" };
     }

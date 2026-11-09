@@ -163,7 +163,7 @@ export async function processStripeEvent(
     const confirmedBookingIds: string[] = [];
     const grantIds: string[] = [];
 
-    const sessionItems = order.items.filter((i) => i.type === "CLASS" || i.type === "ONE_TO_ONE");
+    const sessionItems = order.items.filter((i) => i.type === "CLASS" || i.type === "ONE_TO_ONE" || i.type === "EVENT" || i.type === "DONATION");
     if (sessionItems.length > 0) {
       const bookings = await tx.booking.findMany({ where: { orderId: order.id } });
       for (const b of bookings) {

@@ -108,3 +108,29 @@ describe("database keys", () => {
     expect(bookingKeys({ sessionId: "s1", userId: "u1", capacity: 1 })).toEqual({ userKey: "s1:u1", slotKey: "s1" });
   });
 });
+
+import { EVENT_REFUND_DAYS, eventRefundDeadline, isEventRefundable, parseEuroToCents } from "@/lib/booking-rules";
+
+describe("event rules (7 days) and amounts", () => {
+  const start = new Date("2026-12-12T10:00:00Z");
+  const before = (ms: number) => new Date(start.getTime() - ms);
+  const DAY = 24 * 3600_000;
+  it("7 days is one constant", () => {
+    expect(EVENT_REFUND_DAYS).toBe(7);
+    expect(eventRefundDeadline(start).toISOString()).toBe("2026-12-05T10:00:00.000Z");
+  });
+  it("7 days or more: refundable (exactly 7 days counts); less: not", () => {
+    expect(isEventRefundable(start, before(30 * DAY))).toBe(true);
+    expect(isEventRefundable(start, before(7 * DAY))).toBe(true);
+    expect(isEventRefundable(start, before(7 * DAY - 1000))).toBe(false);
+    expect(isEventRefundable(start, before(1 * DAY))).toBe(false);
+    expect(isEventRefundable(start, before(-DAY))).toBe(false);
+  });
+  it("parseEuroToCents", () => {
+    expect(parseEuroToCents("0")).toBe(0);
+    expect(parseEuroToCents("10")).toBe(1000);
+    expect(parseEuroToCents(" 12,50 ")).toBe(1250);
+    expect(parseEuroToCents("0.5")).toBe(50);
+    for (const bad of ["", "-1", "abc", "1.234", "1e3", "10 €", "1000000"]) expect(parseEuroToCents(bad)).toBeNull();
+  });
+});
