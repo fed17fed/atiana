@@ -1,7 +1,7 @@
 /** Read queries for the public pages (classes, schedule, 1:1). */
 import type { Prisma, PrismaClient } from "./generated/prisma/client";
-import type { BookingStatus, Mode } from "./generated/prisma/enums";
-import { spotsLeft } from "./booking-rules";
+import type { Mode } from "./generated/prisma/enums";
+import { holdCutoff, spotsLeft } from "./booking-rules";
 import { weekRange } from "./time";
 
 export type ScheduleItem = {
@@ -18,7 +18,13 @@ export type ScheduleItem = {
   spotsLeft: number;
 };
 
-const ACTIVE: BookingStatus[] = ["PENDING", "CONFIRMED"];
+/**
+ * A booking takes a seat when it is CONFIRMED, or PENDING (unpaid card hold) and younger than the hold time.
+ * Same rule as the booking engine (releaseExpiredHoldsForSession), so the pages never show "Full" for an old hold.
+ */
+export function seatTaken(now: Date): Prisma.BookingWhereInput {
+  return { OR: [{ status: "CONFIRMED" }, { status: "PENDING", createdAt: { gte: holdCutoff(now) } }] };
+}
 
 function toItem(s: {
   id: string;
@@ -44,10 +50,11 @@ function toItem(s: {
   };
 }
 
-const sessionInclude = {
-  offering: { include: { priceOptions: { orderBy: { amountCents: "asc" }, take: 1 } } },
-  _count: { select: { bookings: { where: { status: { in: ACTIVE } } } } },
-} satisfies Prisma.ClassSessionInclude;
+const sessionInclude = (now: Date) =>
+  ({
+    offering: { include: { priceOptions: { orderBy: { amountCents: "asc" }, take: 1 } } },
+    _count: { select: { bookings: { where: seatTaken(now) } } },
+  }) satisfies Prisma.ClassSessionInclude;
 
 /** Group classes of one Dublin week (weekOffset 0 = this week). Past sessions are hidden. */
 export async function getScheduleWeek(
@@ -63,7 +70,7 @@ export async function getScheduleWeek(
       offering: { type: "GROUP_CLASS", published: true, ...(opts.classSlug ? { slug: opts.classSlug } : {}) },
     },
     orderBy: { startsAt: "asc" },
-    include: sessionInclude,
+    include: sessionInclude(now),
   });
   return { start, end, items: rows.map(toItem) };
 }
@@ -79,7 +86,7 @@ export async function hasSessionsAfter(db: PrismaClient, after: Date) {
 export async function getBookableSession(db: PrismaClient, sessionId: string, now = new Date()) {
   const row = await db.classSession.findFirst({
     where: { id: sessionId, status: "SCHEDULED", startsAt: { gt: now }, offering: { published: true } },
-    include: sessionInclude,
+    include: sessionInclude(now),
   });
   if (!row) return null;
   return { item: toItem(row), type: row.offering.type };
@@ -93,11 +100,11 @@ export async function getOneToOneSlots(db: PrismaClient, opts: { mode?: Mode; no
       status: "SCHEDULED",
       startsAt: { gt: now },
       offering: { type: "ONE_TO_ONE", published: true, ...(opts.mode ? { mode: opts.mode } : {}) },
-      bookings: { none: { status: { in: ACTIVE } } },
+      bookings: { none: seatTaken(now) },
     },
     orderBy: { startsAt: "asc" },
     take: opts.limit ?? 200,
-    include: sessionInclude,
+    include: sessionInclude(now),
   });
   return rows.map(toItem);
 }
@@ -110,7 +117,7 @@ export async function getActivePackages(db: PrismaClient, type: "GROUP_CLASS" | 
 export async function getUserActiveSessionIds(db: PrismaClient, userId: string, sessionIds: string[]) {
   if (sessionIds.length === 0) return new Set<string>();
   const rows = await db.booking.findMany({
-    where: { userId, sessionId: { in: sessionIds }, status: { in: ACTIVE } },
+    where: { userId, sessionId: { in: sessionIds }, ...seatTaken(new Date()) },
     select: { sessionId: true },
   });
   return new Set(rows.map((r) => r.sessionId));

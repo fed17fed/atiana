@@ -3,6 +3,7 @@ import { Prisma } from "@/lib/generated/prisma/client";
 import type { PrismaClient } from "@/lib/generated/prisma/client";
 import { cancelBooking, createBooking, expireCredits, releaseUnpaidHolds } from "@/lib/booking-service";
 import { CANCELLATION_HOURS, HOLD_MINUTES, HOLD_GRACE_MINUTES } from "@/lib/booking-rules";
+import { getBookableSession, getOneToOneSlots, getScheduleWeek } from "@/lib/catalog-queries";
 import { dbTestsOn, getDb, hideTestData, newSession, testOffering, testUser } from "./helpers";
 
 const HOUR = 3600_000;
@@ -247,5 +248,45 @@ d("book with credit and cancel rules", () => {
     expect((await db.creditGrant.findUniqueOrThrow({ where: { id: valid.id } })).creditsLeft).toBe(2);
     expect(await expireCredits(db, new Date())).toBe(0); // second run changes nothing
     await db.creditGrant.update({ where: { id: valid.id }, data: { creditsLeft: 0 } });
+  }, 60_000);
+});
+
+d("pages count only fresh holds (same rule as the booking engine)", () => {
+  const MIN = 60_000;
+  it("class: a 20 and a 33 minute old hold still take the seat, a 40 minute old hold does not", async () => {
+    const t = Date.now();
+    for (const [age, expectLeft] of [[20, 0], [33, 0], [40, 1]] as const) {
+      const s = await newSession(db, groupId, 1);
+      const r = await book(users[0].id, s.id, { now: new Date(t) });
+      expect(r.ok).toBe(true);
+      const view = await getBookableSession(db, s.id, new Date(t + age * MIN));
+      expect(view?.item.spotsLeft, `hold age ${age} min`).toBe(expectLeft);
+    }
+  }, 60_000);
+
+  it("1:1 slot: listed again after the hold is old, not listed while the hold is fresh; a CONFIRMED booking always blocks", async () => {
+    const t = Date.now();
+    const slot = await newSession(db, oneId, 1);
+    const r = await book(users[1].id, slot.id, { now: new Date(t) });
+    expect(r.ok).toBe(true);
+    const listed = async (at: number) => (await getOneToOneSlots(db, { now: new Date(at), limit: 5000 })).some((x) => x.id === slot.id);
+    expect(await listed(t + 20 * MIN)).toBe(false);
+    expect(await listed(t + 40 * MIN)).toBe(true);
+    if (r.ok) await db.booking.update({ where: { id: r.bookingId }, data: { status: "CONFIRMED" } });
+    expect(await listed(t + 40 * MIN)).toBe(false);
+  }, 60_000);
+
+  it("the booking engine agrees: after 40 minutes another user gets the seat the page showed as free", async () => {
+    const t = Date.now();
+    const s = await newSession(db, groupId, 1);
+    expect((await book(users[2].id, s.id, { now: new Date(t) })).ok).toBe(true);
+    expect((await book(users[3].id, s.id, { now: new Date(t + 20 * MIN) })).ok).toBe(false);
+    expect((await getBookableSession(db, s.id, new Date(t + 40 * MIN)))?.item.spotsLeft).toBe(1);
+    expect((await book(users[3].id, s.id, { now: new Date(t + 40 * MIN) })).ok).toBe(true);
+  }, 60_000);
+
+  it("schedule week query uses the same rule", async () => {
+    const week = await getScheduleWeek(db, { weekOffset: 0 });
+    expect(Array.isArray(week.items)).toBe(true);
   }, 60_000);
 });

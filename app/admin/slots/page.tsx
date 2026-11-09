@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { AdminSlotForm } from "@/components/booking/AdminSlotForm";
 import { LocalTime } from "@/components/booking/LocalTime";
 import { DbNotice } from "@/components/ui/DbNotice";
+import { seatTaken } from "@/lib/catalog-queries";
 import { safeDb } from "@/lib/safe";
 import { requireAdmin } from "@/lib/session";
 
@@ -16,7 +17,7 @@ export default async function AdminSlotsPage() {
       where: { offering: { type: "ONE_TO_ONE", published: true }, startsAt: { gt: new Date() }, status: "SCHEDULED" },
       orderBy: { startsAt: "asc" },
       take: 60,
-      include: { offering: { select: { title: true } }, _count: { select: { bookings: { where: { status: { in: ["PENDING", "CONFIRMED"] } } } } } },
+      include: { offering: { select: { title: true } }, _count: { select: { bookings: { where: seatTaken(new Date()) } } } },
     });
     return { offerings, slots };
   });
