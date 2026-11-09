@@ -1,0 +1,40 @@
+/** Queries for /account. EVERY query filters by userId: a user sees only their own data. */
+import type { PrismaClient } from "./generated/prisma/client";
+
+export async function getMyBookings(db: PrismaClient, userId: string) {
+  const rows = await db.booking.findMany({
+    where: { userId },
+    orderBy: { session: { startsAt: "desc" } },
+    include: { session: { include: { offering: true } } },
+  });
+  return rows.map((b) => ({
+    id: b.id,
+    status: b.status,
+    paidWith: b.paidWith,
+    startsAt: b.session.startsAt,
+    endsAt: b.session.endsAt,
+    title: b.session.offering.title,
+    type: b.session.offering.type,
+    mode: b.session.offering.mode,
+    // The Zoom link is only handed out for CONFIRMED bookings.
+    zoomUrl: b.status === "CONFIRMED" ? b.session.zoomUrl : null,
+    location: b.status === "CONFIRMED" ? (b.session.location ?? b.session.offering.location) : null,
+    createdAt: b.createdAt,
+  }));
+}
+
+export async function getMyCredits(db: PrismaClient, userId: string) {
+  return db.creditGrant.findMany({
+    where: { userId },
+    orderBy: [{ expiresAt: "asc" }, { createdAt: "desc" }],
+    include: { package: { select: { name: true } } },
+  });
+}
+
+export async function getMyOrders(db: PrismaClient, userId: string) {
+  return db.order.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    include: { items: true },
+  });
+}

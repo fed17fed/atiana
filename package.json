@@ -13,7 +13,9 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "db:seed-classes": "tsx prisma/seed-classes.ts",
+    "test:db": "RUN_DB_TESTS=true vitest run tests/db --no-file-parallelism"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",

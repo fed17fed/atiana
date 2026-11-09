@@ -1,0 +1,61 @@
+/**
+ * Helpers for tests that talk to the Neon DEV database (never main). They only run with RUN_DB_TESTS=true
+ * (npm run test:db). Rule: nothing is deleted. Test data uses fixed users and one hidden offering;
+ * sessions are cancelled (updated) after the run.
+ */
+import "dotenv/config";
+import { randomUUID } from "node:crypto";
+import type { PrismaClient } from "@/lib/generated/prisma/client";
+
+export const dbTestsOn = process.env.RUN_DB_TESTS === "true" && !!process.env.DATABASE_URL;
+
+export async function getDb(): Promise<PrismaClient> {
+  const { getPrisma } = await import("@/lib/prisma");
+  return getPrisma();
+}
+
+export async function testUser(db: PrismaClient, n: number) {
+  const email = `dbtest-${n}@atiana.test`;
+  await db.user.createMany({ data: [{ email, name: `DB Test ${n}` }], skipDuplicates: true });
+  return db.user.findUniqueOrThrow({ where: { email } });
+}
+
+export async function testOffering(db: PrismaClient, kind: "GROUP_CLASS" | "ONE_TO_ONE") {
+  const slug = kind === "GROUP_CLASS" ? "zz-dbtest-class" : "zz-dbtest-1to1";
+  await db.offering.createMany({
+    data: [
+      {
+        slug,
+        type: kind,
+        title: kind === "GROUP_CLASS" ? "ZZ DB test class" : "ZZ DB test 1:1",
+        published: true,
+        mode: "ONLINE",
+      },
+    ],
+    skipDuplicates: true,
+  });
+  const o = await db.offering.update({ where: { slug }, data: { published: true } });
+  const price = await db.priceOption.findFirst({ where: { offeringId: o.id } });
+  if (!price) await db.priceOption.create({ data: { offeringId: o.id, name: "Test price", amountCents: 1500 } });
+  return o;
+}
+
+/** A new far-future session (year 2040) with a random start so runs never collide. */
+export async function newSession(db: PrismaClient, offeringId: string, capacity: number, startsAt?: Date) {
+  const start = startsAt ?? new Date(Date.UTC(2040, 0, 1) + Math.floor(Math.random() * 3e8) * 1000);
+  return db.classSession.create({
+    data: { offeringId, startsAt: start, endsAt: new Date(start.getTime() + 3600_000), capacity, zoomUrl: "https://zoom.example/test" },
+  });
+}
+
+export function unique(prefix: string) {
+  return `${prefix}-${randomUUID().slice(0, 8)}`;
+}
+
+/** Hide the test offering and cancel its sessions again (update only, nothing deleted). */
+export async function hideTestData(db: PrismaClient) {
+  const offerings = await db.offering.findMany({ where: { slug: { startsWith: "zz-dbtest" } }, select: { id: true } });
+  const ids = offerings.map((o) => o.id);
+  await db.offering.updateMany({ where: { id: { in: ids } }, data: { published: false } });
+  await db.classSession.updateMany({ where: { offeringId: { in: ids }, status: "SCHEDULED" }, data: { status: "CANCELLED" } });
+}

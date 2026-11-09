@@ -12,5 +12,18 @@ function createPrismaClient() {
   });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/** Creates the client on first use. Importing this file never throws (builds work without a database). */
+export function getPrisma(): PrismaClient {
+  const client = globalForPrisma.prisma ?? createPrismaClient();
+  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
+  return client;
+}
+
+/** Same client, created lazily: a missing DATABASE_URL only fails when a query runs. */
+export const prisma: PrismaClient = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrisma();
+    const value = Reflect.get(client, prop, client);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
