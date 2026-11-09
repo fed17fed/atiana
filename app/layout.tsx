@@ -4,6 +4,7 @@ import "./globals.css";
 import { DemoBar } from "@/components/layout/DemoBar";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { getSiteUrl, isIndexingAllowed, SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -21,9 +22,28 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "KEA by Atiana",
-  description:
-    "Live classes, 1:1 sessions and events for breath, energy and stillness. Demo site.",
+  metadataBase: new URL(getSiteUrl()),
+  title: { default: SITE_NAME, template: `%s | ${SITE_NAME}` },
+  description: `${SITE_DESCRIPTION} Demo site.`,
+  applicationName: SITE_NAME,
+  // Demo site: block search engines unless ALLOW_INDEXING=true (see lib/site.ts).
+  robots: isIndexingAllowed()
+    ? { index: true, follow: true }
+    : { index: false, follow: false, nocache: true },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    locale: "en_IE",
+    images: [
+      {
+        url: "/demo/terrace-meditation.webp",
+        width: 1600,
+        height: 1217,
+        alt: "A person sitting in meditation on a wooden terrace in warm evening light",
+      },
+    ],
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -41,7 +61,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </a>
         <DemoBar />
         <SiteHeader />
-        <main id="main" tabIndex={-1} className="flex-1 focus:outline-none">
+        <main id="main" tabIndex={-1} className="page flex-1 focus:outline-none">
           {children}
         </main>
         <SiteFooter />
