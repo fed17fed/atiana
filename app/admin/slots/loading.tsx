@@ -1,7 +1,5 @@
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
+
 export default function Loading() {
-  return (
-    <p className="hint" role="status">
-      Loading...
-    </p>
-  );
+  return <PageSkeleton minHeight={480} />;
 }

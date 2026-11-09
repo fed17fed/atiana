@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { ScheduleList } from "@/components/booking/ScheduleList";
 import { TimeZoneName } from "@/components/booking/LocalTime";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
@@ -33,7 +34,7 @@ export default function SchedulePage({ searchParams }: PageProps<"/schedule">) {
           Times are in your time zone (<TimeZoneName />). Cancel up to {CANCELLATION_HOURS} hours before.
         </p>
       </div>
-      <Suspense fallback={<div className="wrap sched"><p className="hint" role="status">Loading classes...</p></div>}>
+      <Suspense fallback={<PageSkeleton minHeight={760} />}>
         <ScheduleBody searchParams={searchParams} />
       </Suspense>
     </>

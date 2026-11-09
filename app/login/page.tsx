@@ -19,7 +19,7 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <div className="narrow" style={{ maxWidth: 560 }}>
         <p className="eyebrow">My account</p>
         <h1 id="login-h">Log in</h1>
-        <Suspense fallback={<p className="hint" role="status">Loading...</p>}>
+        <Suspense fallback={<div style={{ minHeight: 360 }} role="status">Loading...</div>}>
           <LoginBody searchParams={searchParams} />
         </Suspense>
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { AccountNav } from "@/components/booking/AccountNav";
 import { logout } from "@/app/login/actions";
 import { requireUser } from "@/lib/session";
@@ -13,7 +14,7 @@ export default function AccountLayout({ children }: LayoutProps<"/account">) {
   return (
     <section className="sec" aria-labelledby="acc-h">
       <div className="wrap">
-        <Suspense fallback={<p className="hint" role="status">Loading your account...</p>}>
+        <Suspense fallback={<PageSkeleton minHeight={600} />}>
           <Gate>{children}</Gate>
         </Suspense>
       </div>

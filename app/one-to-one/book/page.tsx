@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { OneToOnePicker } from "@/components/booking/OneToOnePicker";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
@@ -26,7 +27,7 @@ export default function BookOneToOnePage({ searchParams }: PageProps<"/one-to-on
         <h1>Book a 1:1 session</h1>
         <p className="lead">Sixty minutes, just for you. Online on Zoom or in person in Ireland.</p>
       </div>
-      <Suspense fallback={<div className="narrow"><p className="hint" role="status">Loading...</p></div>}>
+      <Suspense fallback={<PageSkeleton minHeight={900} narrow />}>
         <Body searchParams={searchParams} />
       </Suspense>
     </>

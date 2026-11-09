@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookForm } from "@/components/booking/BookForm";
 import { LocalTime, TimeZoneName } from "@/components/booking/LocalTime";
+import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
@@ -25,7 +26,7 @@ export default function BookClassPage({ searchParams }: PageProps<"/book/class">
       <div className="wrap page-head">
         <h1>Book a class</h1>
       </div>
-      <Suspense fallback={<div className="narrow"><p className="hint" role="status">Loading...</p></div>}>
+      <Suspense fallback={<PageSkeleton minHeight={640} narrow />}>
         <Body searchParams={searchParams} />
       </Suspense>
     </>

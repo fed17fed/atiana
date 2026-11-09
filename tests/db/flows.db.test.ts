@@ -243,3 +243,20 @@ d("cancel a card-paid booking: client chooses credit or money", () => {
     expect((await db.booking.findUniqueOrThrow({ where: { id: r.bookingId } })).status).toBe("CONFIRMED");
   }, 60_000);
 });
+
+d("expired credit on a booking (B3)", () => {
+  it("account list marks the credit as expired; early cancel does not return it and is not 'late'", async () => {
+    const u = await testUser(db, 4);
+    await db.creditGrant.updateMany({ where: { userId: u.id }, data: { creditsLeft: 0 } });
+    const g = await db.creditGrant.create({ data: { userId: u.id, creditsTotal: 1, creditsLeft: 1, source: "ADMIN", appliesTo: ["GROUP_CLASS"], expiresAt: new Date("2100-01-01T00:00:00Z") } });
+    const s = await newSession(db, groupId, 5);
+    const r = await createBooking(db, { userId: u.id, sessionId: s.id, method: "CREDIT", disclaimerAccepted: true });
+    if (!r.ok) throw new Error("setup");
+    expect((await getMyBookings(db, u.id)).find((b) => b.id === r.bookingId)?.creditExpired).toBe(false);
+    await db.creditGrant.update({ where: { id: g.id }, data: { expiresAt: new Date("2020-01-01T00:00:00Z") } });
+    expect((await getMyBookings(db, u.id)).find((b) => b.id === r.bookingId)?.creditExpired).toBe(true);
+    const c = await cancelBooking(db, { userId: u.id, bookingId: r.bookingId });
+    expect(c).toMatchObject({ ok: true, creditReturned: false, early: true });
+    expect((await db.creditGrant.findUniqueOrThrow({ where: { id: g.id } })).creditsLeft).toBe(0);
+  }, 60_000);
+});
