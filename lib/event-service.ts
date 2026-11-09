@@ -190,6 +190,7 @@ export async function cancelEventRegistration(
     if (!input.refund || !pre.orderId) return { ok: false, code: "REFUND_OFF" };
     try {
       await input.refund({ orderId: pre.orderId, bookingId: pre.id });
+      await db.order.updateMany({ where: { id: pre.orderId, refundStartedAt: null }, data: { refundStartedAt: now } });
     } catch (error) {
       console.error("[event refund] Stripe refund failed", error instanceof Error ? error.message : error);
       return { ok: false, code: "REFUND_FAILED" };
@@ -216,7 +217,10 @@ export async function cancelEventRegistration(
 
 export type AdminCancelResult = {
   cancelledRegistrations: number;
+  /** Refunds started in THIS run. */
   refundsStarted: number;
+  /** Tickets whose refund was already started in an earlier run (Stripe is not asked again). */
+  refundsAlreadyStarted: number;
   refundsFailed: number;
 };
 
@@ -250,19 +254,25 @@ export async function cancelEventByAdmin(
   // Every PAID ticket order of this event (also from earlier runs, until Stripe confirms the refund).
   const paid = await db.booking.findMany({
     where: { sessionId: session.id, order: { status: "PAID", items: { some: { type: "EVENT" } } } },
-    select: { id: true, orderId: true },
+    select: { id: true, orderId: true, order: { select: { refundStartedAt: true } } },
   });
   let started = 0;
+  let already = 0;
   let failed = 0;
   for (const b of paid) {
     if (!b.orderId) continue;
+    if (b.order?.refundStartedAt) {
+      already++; // a refund was started before: do not ask Stripe again
+      continue;
+    }
     try {
       await input.refund({ orderId: b.orderId, bookingId: b.id });
+      await db.order.updateMany({ where: { id: b.orderId, refundStartedAt: null }, data: { refundStartedAt: new Date() } });
       started++;
     } catch (error) {
       failed++;
       console.error("[event admin cancel] refund failed", b.id, error instanceof Error ? error.message : error);
     }
   }
-  return { cancelledRegistrations: cancelled, refundsStarted: started, refundsFailed: failed };
+  return { cancelledRegistrations: cancelled, refundsStarted: started, refundsAlreadyStarted: already, refundsFailed: failed };
 }

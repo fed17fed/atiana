@@ -21,6 +21,7 @@ const NOTES: Record<string, { cls: string; text: string }> = {
   event_refund: { cls: "a-success", text: "Your place is cancelled. Your refund was started. [MAIL]" },
   event_no_refund: { cls: "a-warn", text: `Your place is cancelled. No refund, because the event is less than ${EVENT_REFUND_DAYS} days away.` },
   event_money_off: { cls: "a-warn", text: "Demo: money back is not active yet because the Stripe keys are not added. Nothing was changed, your place is still saved." },
+  event_donation: { cls: "a-warn", text: "Your place is cancelled. Your donation is not refunded." },
   event_done: { cls: "a-success", text: "Your place is cancelled. Thank you for letting us know." },
   late: { cls: "a-warn", text: `Your booking is cancelled. It was less than ${CANCELLATION_HOURS} hours before the start, so the credit is not returned.` },
   credit_given: { cls: "a-success", text: "Your booking is cancelled. We added 1 class credit to your account (see My credits)." },
@@ -57,18 +58,18 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
   if (!bookings) return <DbNotice what="your bookings" />;
 
   const now = new Date();
-  const upcoming = bookings.filter((b) => b.startsAt > now && b.status !== "CANCELLED").reverse();
-  const rest = bookings.filter((b) => !(b.startsAt > now && b.status !== "CANCELLED"));
+  const upcoming = bookings.filter((b) => b.startsAt > now && b.status !== "CANCELLED" && !b.staleHold).reverse();
+  const rest = bookings.filter((b) => !(b.startsAt > now && b.status !== "CANCELLED" && !b.staleHold));
 
   const card = (b: (typeof bookings)[number]) => {
     const st = STATUS[b.status];
-    const active = (b.status === "CONFIRMED" || b.status === "PENDING") && canCancel(b.startsAt, now);
+    const active = (b.status === "CONFIRMED" || b.status === "PENDING") && canCancel(b.startsAt, now) && !b.staleHold;
     const early = isRefundable(b.startsAt, now);
     return (
       <li className="acc-card" key={b.id}>
         <div className="row">
           <h3>{b.title}</h3>
-          <span className={`status ${b.sessionCancelled ? "s-cancelled" : st.cls}`}>{b.sessionCancelled ? "Cancelled by KEA" : st.label}</span>
+          <span className={`status ${b.sessionCancelled || b.staleHold ? "s-cancelled" : st.cls}`}>{b.sessionCancelled ? "Cancelled by KEA" : b.staleHold ? "Payment not completed" : st.label}</span>
         </div>
         <div className="meta">
           <span>
@@ -86,7 +87,8 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
           </p>
         )}
         {b.status === "CONFIRMED" && !b.zoomUrl && b.location && <p style={{ margin: 0 }}>Place: {b.location}</p>}
-        {b.status === "PENDING" && <p className="note">{b.mode === "ONLINE" ? "The Zoom link is shown after the payment is confirmed." : "The place is shown after the payment is confirmed."}</p>}
+        {b.staleHold && <p className="note">The payment was not completed in time, so the seat was released. You can book again.</p>}
+        {b.status === "PENDING" && !b.staleHold && <p className="note">{b.mode === "ONLINE" ? "The Zoom link is shown after the payment is confirmed." : "The place is shown after the payment is confirmed."}</p>}
         {b.type === "EVENT" && b.sessionCancelled && (
           <p className="note">We cancelled this event. If you paid for a ticket, you get all your money back.</p>
         )}

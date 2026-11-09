@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { getMyOrders } from "@/lib/account-queries";
 import { formatEuro } from "@/lib/orders-service";
+import { holdCutoff } from "@/lib/booking-rules";
 import { safeDb } from "@/lib/safe";
 import { requireUser } from "@/lib/session";
 import { formatDate } from "@/lib/time";
@@ -39,7 +40,8 @@ export default async function OrdersPage() {
   return (
     <ul className="acc-list">
       {orders.map((o) => {
-        const st = STATUS[o.status];
+        const stale = o.status === "PENDING" && o.createdAt < holdCutoff(new Date());
+        const st = stale ? { label: "Not completed", cls: "s-cancelled" } : STATUS[o.status];
         return (
           <li className="acc-card" key={o.id}>
             <div className="row">

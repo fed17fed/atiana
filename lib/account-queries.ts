@@ -1,3 +1,4 @@
+import { holdCutoff } from "./booking-rules";
 /** Queries for /account. EVERY query filters by userId: a user sees only their own data. */
 import type { PrismaClient } from "./generated/prisma/client";
 
@@ -21,6 +22,8 @@ export async function getMyBookings(db: PrismaClient, userId: string) {
     zoomUrl: b.status === "CONFIRMED" ? b.session.zoomUrl : null,
     location: b.status === "CONFIRMED" ? (b.session.location ?? b.session.offering.location) : null,
     createdAt: b.createdAt,
+    /** Unpaid card hold older than the hold time: the seat is already free, the payment never finished. */
+    staleHold: b.status === "PENDING" && b.paidWith === "STRIPE" && b.createdAt < holdCutoff(now),
     sessionCancelled: b.session.status === "CANCELLED",
     eventPricing: b.session.offering.eventPricing,
     eventSlug: b.session.offering.slug,

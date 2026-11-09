@@ -238,7 +238,7 @@ async function Panel({ e, searchParams }: { e: EventDef; searchParams: PageProps
           <div className="alert a-info" role="status">
             <Icon name="info" />
             <div>
-              <p>Thank you. Your payment is being confirmed. Your place shows as confirmed in a moment.</p>
+              <p>We are waiting for your payment. If you just paid, your place shows as confirmed in a moment.</p>
             </div>
           </div>
         ) : (
@@ -249,9 +249,12 @@ async function Panel({ e, searchParams }: { e: EventDef; searchParams: PageProps
             </div>
           </div>
         )}
-        <Link className="btn btn-outline" href="/account/bookings">
-          View my bookings
-        </Link>
+        {/* The success box already has its own "View my bookings" link: show the button only without it. */}
+        {!(done && reg.status === "CONFIRMED") && (
+          <Link className="btn btn-outline" href="/account/bookings">
+            View my bookings
+          </Link>
+        )}
       </>
     );
   } else if (closed) {

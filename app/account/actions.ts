@@ -63,7 +63,7 @@ export async function cancelMyEventPlace(formData: FormData): Promise<void> {
       refund: stripeCfg ? makeRefunder(getStripe(stripeCfg.secretKey), prisma) : undefined,
     });
     if (r.ok) {
-      outcome = r.reason === "TICKET_EARLY" ? "event_refund" : r.reason === "TICKET_LATE" ? "event_no_refund" : "event_done";
+      outcome = r.reason === "TICKET_EARLY" ? "event_refund" : r.reason === "TICKET_LATE" ? "event_no_refund" : r.reason === "DONATION" ? "event_donation" : "event_done";
     } else {
       outcome = r.code === "PAST" ? "past" : r.code === "REFUND_OFF" ? "event_money_off" : r.code === "REFUND_FAILED" ? "refund_failed" : "error";
     }

@@ -75,9 +75,10 @@ export async function getEventBySlug(db: PrismaClient, slug: string, now = new D
 }
 
 /** The logged-in user's active registration for one event (Zoom link / place only when CONFIRMED). */
-export async function getMyEventRegistration(db: PrismaClient, userId: string, sessionId: string) {
+export async function getMyEventRegistration(db: PrismaClient, userId: string, sessionId: string, now = new Date()) {
   const b = await db.booking.findFirst({
-    where: { userId, sessionId, status: { in: ["PENDING", "CONFIRMED"] } },
+    // Same rule as the booking engine: an unpaid hold older than the hold time no longer counts.
+    where: { userId, sessionId, ...seatTaken(now) },
     include: { session: true, order: { include: { items: true } } },
   });
   if (!b) return null;

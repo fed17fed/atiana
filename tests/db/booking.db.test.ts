@@ -290,3 +290,15 @@ d("pages count only fresh holds (same rule as the booking engine)", () => {
     expect(Array.isArray(week.items)).toBe(true);
   }, 60_000);
 });
+
+d("the same user after a stale hold (class)", () => {
+  it("can book the class again after 40 minutes (old hold released, unique key free)", async () => {
+    const s = await newSession(db, groupId, 5);
+    const t = Date.now();
+    const first = await book(users[4].id, s.id, { now: new Date(t) });
+    if (!first.ok) throw new Error("setup");
+    expect(await book(users[4].id, s.id, { now: new Date(t + 20 * 60_000) })).toEqual({ ok: false, code: "ALREADY_BOOKED" });
+    expect((await book(users[4].id, s.id, { now: new Date(t + 40 * 60_000) })).ok).toBe(true);
+    expect((await db.booking.findUniqueOrThrow({ where: { id: first.bookingId } })).userKey).toBeNull();
+  }, 60_000);
+});

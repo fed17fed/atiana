@@ -246,6 +246,7 @@ export async function cancelBooking(
       if (!input.refund) return { ok: false, code: "REFUND_OFF" };
       try {
         await input.refund({ orderId: pre.orderId, bookingId: pre.id });
+        await db.order.updateMany({ where: { id: pre.orderId, refundStartedAt: null }, data: { refundStartedAt: now } });
       } catch (error) {
         console.error("[refund] Stripe refund failed", error instanceof Error ? error.message : error);
         return { ok: false, code: "REFUND_FAILED" };

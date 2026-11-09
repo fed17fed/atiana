@@ -19,7 +19,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }
     "PRODID:-//KEA by Atiana//Events//EN",
     "BEGIN:VEVENT",
     `UID:${e.slug}@kea-atiana`,
-    `DTSTAMP:${stamp(start)}`,
+    `DTSTAMP:${stamp(new Date())}`,
     `DTSTART:${stamp(start)}`,
     `DTEND:${stamp(end)}`,
     `SUMMARY:${esc(e.title)}`,

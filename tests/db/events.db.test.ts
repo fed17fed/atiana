@@ -5,6 +5,7 @@ import { EVENT_REFUND_DAYS } from "@/lib/booking-rules";
 import { cancelEventByAdmin, cancelEventRegistration, registerForEvent } from "@/lib/event-service";
 import { processStripeEvent } from "@/lib/stripe-service";
 import { getMyBookings } from "@/lib/account-queries";
+import { getMyEventRegistration } from "@/lib/event-queries";
 import { dbTestsOn, getDb, hideTestData, newSession, testEventOffering, testUser, unique } from "./helpers";
 
 const d = describe.skipIf(!dbTestsOn);
@@ -201,22 +202,24 @@ d("KEA cancels the event (admin)", () => {
     const seen: string[] = [];
     const refund = vi.fn(async (a: { bookingId: string }) => void seen.push(a.bookingId));
     const r1 = await cancelEventByAdmin(db, { sessionId: s.id, refund });
-    expect(r1).toEqual({ cancelledRegistrations: 4, refundsStarted: 3, refundsFailed: 0 });
+    expect(r1).toEqual({ cancelledRegistrations: 4, refundsStarted: 3, refundsAlreadyStarted: 0, refundsFailed: 0 });
     expect(new Set(seen)).toEqual(new Set([t1.bookingId, t2.bookingId, t3.bookingId]));
     const session = await db.classSession.findUniqueOrThrow({ where: { id: s.id } });
     expect(session.status).toBe("CANCELLED");
     expect(await db.booking.count({ where: { sessionId: s.id, status: { in: ["PENDING", "CONFIRMED"] } } })).toBe(0);
     expect((await db.order.findUniqueOrThrow({ where: { id: hold.orderId! } })).status).toBe("CANCELLED");
 
-    // Run again: only the same bookings (same Stripe keys), no new ones
+    // Run again (E5): Stripe is NOT asked again, and the counts are honest
     seen.length = 0;
-    await cancelEventByAdmin(db, { sessionId: s.id, refund });
-    expect(new Set(seen)).toEqual(new Set([t1.bookingId, t2.bookingId, t3.bookingId]));
+    const r2 = await cancelEventByAdmin(db, { sessionId: s.id, refund });
+    expect(seen).toHaveLength(0);
+    expect(refund).toHaveBeenCalledTimes(3);
+    expect(r2).toEqual({ cancelledRegistrations: 0, refundsStarted: 0, refundsAlreadyStarted: 3, refundsFailed: 0 });
 
     // Stripe confirms all refunds: orders REFUNDED, a third run refunds nobody
     for (const t of [t1, t2, t3]) await processStripeEvent(db, { id: unique("evt"), type: "charge.refunded", data: { object: { payment_intent: t.pi, refunded: true } } });
     seen.length = 0;
-    expect(await cancelEventByAdmin(db, { sessionId: s.id, refund })).toMatchObject({ refundsStarted: 0 });
+    expect(await cancelEventByAdmin(db, { sessionId: s.id, refund })).toMatchObject({ refundsStarted: 0, refundsAlreadyStarted: 0 });
     expect(seen).toHaveLength(0);
     expect(await reg(users[4].id, s.id)).toEqual({ ok: false, code: "CLOSED" });
   }, 120_000);
@@ -230,5 +233,42 @@ d("KEA cancels the event (admin)", () => {
     expect(await cancelEventByAdmin(db, { sessionId: s.id, refund })).toMatchObject({ cancelledRegistrations: 1, refundsStarted: 0 });
     expect(refund).not.toHaveBeenCalled();
     expect(await cancelEventByAdmin(db, { sessionId: "nope", refund })).toEqual({ ok: false, code: "NOT_FOUND" });
+  }, 60_000);
+});
+
+d("stale unpaid hold (E1)", () => {
+  it("a 40 minute old hold is ignored: the user sees no registration, may register again, the old hold is released; a fresh hold still counts", async () => {
+    const s = await newSession(db, paidId, 5);
+    const t = Date.now();
+    const first = await reg(users[0].id, s.id, { now: new Date(t) });
+    if (!first.ok) throw new Error("setup");
+    // 20 minutes: still a registration (waiting for payment), and trying again says already registered
+    expect((await getMyEventRegistration(db, users[0].id, s.id, new Date(t + 20 * MIN)))?.status).toBe("PENDING");
+    expect(await reg(users[0].id, s.id, { now: new Date(t + 20 * MIN) })).toEqual({ ok: false, code: "ALREADY_REGISTERED" });
+    // 40 minutes: ignored by the page query
+    expect(await getMyEventRegistration(db, users[0].id, s.id, new Date(t + 40 * MIN))).toBeNull();
+    // and the engine lets the same user register again (the old hold and its unique key are released)
+    const again = await reg(users[0].id, s.id, { now: new Date(t + 40 * MIN) });
+    expect(again.ok).toBe(true);
+    const old = await db.booking.findUniqueOrThrow({ where: { id: first.bookingId } });
+    expect(old).toMatchObject({ status: "CANCELLED", userKey: null });
+    expect(await db.booking.count({ where: { sessionId: s.id, userId: users[0].id, status: { in: ["PENDING", "CONFIRMED"] } } })).toBe(1);
+  }, 60_000);
+
+  it("account list marks a stale hold, and it is not 'upcoming waiting for payment'", async () => {
+    const s = await newSession(db, paidId, 5);
+    const r = await reg(users[1].id, s.id);
+    if (!r.ok) throw new Error("setup");
+    expect((await getMyBookings(db, users[1].id)).find((b) => b.id === r.bookingId)?.staleHold).toBe(false);
+    await db.booking.update({ where: { id: r.bookingId }, data: { createdAt: new Date(Date.now() - 40 * MIN) } });
+    expect((await getMyBookings(db, users[1].id)).find((b) => b.id === r.bookingId)?.staleHold).toBe(true);
+  }, 60_000);
+
+  it("a paid donation cancel reports reason DONATION (text: not refunded)", async () => {
+    const s = await newSession(db, donationId, 5);
+    const r = await reg(users[2].id, s.id, { donationCents: 700 });
+    if (!r.ok) throw new Error("setup");
+    await processStripeEvent(db, { id: unique("evt"), type: "checkout.session.completed", data: { object: { id: unique("cs"), client_reference_id: r.orderId, payment_status: "paid", amount_total: 700, payment_intent: unique("pi") } } });
+    expect(await cancelEventRegistration(db, { userId: users[2].id, bookingId: r.bookingId })).toMatchObject({ ok: true, reason: "DONATION", refund: "NONE" });
   }, 60_000);
 });

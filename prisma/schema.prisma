@@ -334,6 +334,7 @@ model Order {
   stripeSessionId       String?       @unique
   stripePaymentIntentId String? // saved by the webhook; used for refunds
   paidAt                DateTime?
+  refundStartedAt       DateTime? // set when a Stripe refund was started for this order (REFUNDED comes later from the webhook)
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
 

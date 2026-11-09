@@ -18,7 +18,7 @@ export default async function AccountPage() {
   if (!data) return <DbNotice what="your account data" />;
 
   const now = new Date();
-  const upcoming = data.bookings.filter((b) => b.startsAt > now && (b.status === "CONFIRMED" || b.status === "PENDING")).length;
+  const upcoming = data.bookings.filter((b) => b.startsAt > now && (b.status === "CONFIRMED" || b.status === "PENDING") && !b.staleHold).length;
   const group = data.credits.filter((g) => isUsableCredit(g, "GROUP_CLASS", now)).reduce((n, g) => n + g.creditsLeft, 0);
   const one = data.credits.filter((g) => isUsableCredit(g, "ONE_TO_ONE", now)).reduce((n, g) => n + g.creditsLeft, 0);
 
