@@ -1,26 +1,40 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* Extra breakpoint from the hi-fi design: full desktop header from 1100 px (tablets use the menu button). */
+@theme {
+  --breakpoint-nav: 68.75rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  body {
+    background: var(--color-cream);
+    color: var(--color-plum);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Small shared component classes (same look as design/hifi/hifi.css) */
+@layer components {
+  .wrap {
+    width: min(1200px, calc(100% - 40px));
+    margin-inline: auto;
+  }
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-pill border-2 border-transparent px-6.5 py-3 leading-[1.1] font-bold no-underline transition-[background,color,box-shadow,transform] duration-200;
+  }
+  .btn-sm {
+    @apply min-h-11 px-5 py-2 text-[0.95rem];
+  }
+  .btn-block {
+    @apply w-full;
+  }
+  .btn-primary {
+    @apply bg-ember-deep text-white hover:bg-ember-darker hover:text-white hover:shadow-glow active:translate-y-px;
+  }
+  .btn-accent {
+    @apply bg-ember text-plum hover:bg-[#FF7448] hover:text-plum;
+  }
+  .input {
+    @apply min-h-12 w-full rounded-field border border-field bg-white px-3.5 py-2.5;
+  }
 }
