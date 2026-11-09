@@ -28,6 +28,9 @@ export function isIndexingAllowed(env: NodeJS.ProcessEnv = process.env): boolean
 export const sitemapPaths = [
   "/",
   "/about",
+  "/classes",
+  "/schedule",
+  "/one-to-one",
   "/contact",
   "/faq",
   "/legal/privacy",

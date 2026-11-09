@@ -29,6 +29,9 @@ Rules:
 - App uses `DATABASE_URL` (pooled). Prisma migrations use `DIRECT_URL` (direct).
 - Never run migrations on Neon `main` without the owner's OK.
 - Names of all future variables are in `.env.example` (empty values).
+- Phase 4 names (all empty until the keys exist; the features stay OFF and show a "Demo: ... not active yet" message): `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SECRET` (payments need both), `AUTH_SECRET` + `AUTH_RESEND_KEY` (or `RESEND_API_KEY`) + `EMAIL_FROM` (email login needs all three), `CRON_SECRET` (daily cron route; closed without it), `ALLOW_DEV_LOGIN` (LOCAL ONLY, never set on Vercel).
+- Stripe webhook URL to add later: `<site>/api/stripe/webhook`, events `checkout.session.completed` and `checkout.session.expired`.
+- Daily cron: `vercel.json` runs `/api/cron/daily` at 06:00 UTC once a day (Hobby plan allows only daily crons; check current Vercel docs). Vercel sends `Authorization: Bearer <CRON_SECRET>` itself.
 - Stripe, Resend and Turnstile keys: **keys added later** (task 0.4). No accounts created yet.
 
 ## Checks before a push
