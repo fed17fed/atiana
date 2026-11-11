@@ -7,15 +7,15 @@ import { spotsLabel } from "@/content/home";
 const env = (o: Record<string, string>) => o as unknown as NodeJS.ProcessEnv;
 
 describe("FAQ", () => {
-  it("has 15 questions in 6 groups", () => {
-    expect(faqCount).toBe(15);
-    expect(faqGroups).toHaveLength(6);
+  it("has 14 questions in 5 groups (shop removed 2026-11-11)", () => {
+    expect(faqCount).toBe(14);
+    expect(faqGroups).toHaveLength(5);
   });
 
   it("JSON-LD is a FAQPage with all questions and no placeholders", () => {
     const ld = faqJsonLd(faqGroups) as { "@type": string; mainEntity: { acceptedAnswer: { text: string } }[] };
     expect(ld["@type"]).toBe("FAQPage");
-    expect(ld.mainEntity).toHaveLength(15);
+    expect(ld.mainEntity).toHaveLength(14);
     for (const e of ld.mainEntity) {
       expect(e.acceptedAnswer.text).not.toMatch(/\[OWNER|\(demo/);
     }
@@ -40,7 +40,7 @@ describe("site helpers", () => {
   });
 
   it("sitemap has home, about, classes, schedule, 1:1, events (list + 4 details), contact, faq and 5 legal pages", () => {
-    expect(sitemapPaths).toHaveLength(17);
+    expect(sitemapPaths).toHaveLength(18);
     expect(sitemapPaths.filter((p) => p.startsWith("/legal/"))).toHaveLength(5);
   });
 

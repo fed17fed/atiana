@@ -36,6 +36,7 @@ export const sitemapPaths = [
   "/events/sound-and-stillness-sunday",
   "/events/winter-light-half-day",
   "/events/slow-morning-by-the-hills",
+  "/donate",
   "/contact",
   "/faq",
   "/legal/privacy",

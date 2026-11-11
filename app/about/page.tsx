@@ -76,9 +76,8 @@ export default function AboutPage() {
             feel more relaxed after class. We hope you will too.
           </p>
           <p>
-            We also love to share. You can send a friend a gift, or invite them with your link. You
-            can join an event, or read a book from our shop. Everything is made to help you build a
-            small, steady habit.
+            We also love to share. You can invite a friend with your link, or join one of our
+            events. Everything is made to help you build a small, steady habit.
           </p>
           <p>Thank you for being here. We look forward to practising with you.</p>
           <p className="hint">

@@ -35,7 +35,7 @@ export function SiteFooter() {
                   <li key={l.href}>
                     <Link
                       href={l.href}
-                      className="focus-light inline-block min-h-10 py-2 underline-offset-4 hover:text-[#FFB59B]"
+                      className="focus-light inline-block min-h-11 py-2.5 underline-offset-4 hover:text-[#FFB59B]"
                     >
                       {l.label}
                     </Link>

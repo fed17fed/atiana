@@ -7,7 +7,7 @@ import { faqJsonLd } from "@/lib/jsonld";
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Answers about classes, Zoom, class packs and credits, booking and cancellation, 1:1 sessions and the shop.",
+    "Answers about classes, Zoom, class packs and credits, booking and cancellation and 1:1 sessions.",
   alternates: { canonical: "/faq" },
   openGraph: { title: "Questions people ask – KEA by Atiana", url: "/faq" },
 };

@@ -13,7 +13,6 @@ export const metadata: Metadata = { title: "My orders" };
 const STATUS: Record<string, { label: string; cls: string }> = {
   PAID: { label: "Paid", cls: "s-confirmed" },
   PENDING: { label: "Waiting for payment", cls: "s-pending" },
-  SHIPPED: { label: "Shipped", cls: "s-confirmed" },
   REFUNDED: { label: "Refunded", cls: "s-past" },
   CANCELLED: { label: "Cancelled", cls: "s-cancelled" },
 };

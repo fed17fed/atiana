@@ -16,6 +16,8 @@ export const EVENT_REFUND_DAYS = 7;
 export const MIN_CARD_PAYMENT_CENTS = 50;
 /** Safety limit for one donation (demo value, open question for the owner). */
 export const MAX_DONATION_CENTS = 100_000;
+/** Smallest stand-alone donation on /donate (owner decision 2026-11-11: EUR 1). Event donations use MIN_CARD_PAYMENT_CENTS. */
+export const MIN_DONATION_CENTS = 100;
 
 /** Demo value (open question for the owner): a credit given for an early cancel of a card-paid booking is valid this long. */
 export const CANCEL_CREDIT_VALID_DAYS = 70;

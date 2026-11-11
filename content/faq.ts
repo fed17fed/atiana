@@ -80,16 +80,6 @@ export const faqGroups: FaqGroup[] = [
     ],
   },
   {
-    id: "shop",
-    title: "Shop",
-    items: [
-      {
-        q: "How much is shipping and how long does it take?",
-        a: "Shipping is €5 in Ireland and takes 2–4 working days. (demo value) [OWNER: shipping area; physical or digital]",
-      },
-    ],
-  },
-  {
     id: "other",
     title: "Other",
     items: [

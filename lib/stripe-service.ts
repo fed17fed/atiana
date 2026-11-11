@@ -26,6 +26,8 @@ export type CheckoutOrder = {
   email: string;
   currency: string;
   items: { description: string; quantity: number; unitPriceCents: number }[];
+  /** Extra Stripe metadata (for example the donor name). orderId is always set by us. */
+  metadata?: Record<string, string>;
 };
 
 /** Creates a Stripe Checkout Session for an unpaid order. The order id is stored on the session. */
@@ -39,7 +41,7 @@ export async function createCheckoutSession(
     mode: "payment",
     customer_email: order.email,
     client_reference_id: order.id,
-    metadata: { orderId: order.id },
+    metadata: { ...(order.metadata ?? {}), orderId: order.id },
     line_items: order.items.map((i) => ({
       quantity: i.quantity,
       price_data: {

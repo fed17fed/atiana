@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { sendBookingConfirmations } from "@/lib/notifications";
+import { sendBookingConfirmations, sendDonationThanks } from "@/lib/notifications";
 import { getStripe, processStripeEvent, stripeConfig, verifyWebhook } from "@/lib/stripe-service";
 
 /** Stripe webhook. OFF (503) without STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET. This is the only place that marks orders PAID. */
@@ -21,6 +21,10 @@ export async function POST(req: NextRequest) {
     const result = await processStripeEvent(prisma, event);
     if (result.status === "paid" && result.confirmedBookingIds.length > 0) {
       await sendBookingConfirmations(prisma, result.confirmedBookingIds);
+    }
+    if (result.status === "paid") {
+      // Stand-alone donation: thank-you email (off without Resend). The donor name is not saved.
+      await sendDonationThanks(prisma, result.orderId);
     }
     return Response.json({ received: true, result: result.status });
   } catch (error) {

@@ -1,24 +1,22 @@
 export type NavLink = { label: string; href: string };
 
-/** Five main links: desktop header and mobile menu. */
+/** Four main links: desktop header and mobile menu (shop removed 2026-11-11). */
 export const mainNav: NavLink[] = [
   { label: "Classes", href: "/classes" },
   { label: "1:1 Sessions", href: "/one-to-one" },
   { label: "Events", href: "/events" },
-  { label: "Shop", href: "/shop" },
   { label: "About", href: "/about" },
 ];
 
 export const donateLink: NavLink = { label: "Donate", href: "/donate" };
 export const bookLink: NavLink = { label: "Book a class", href: "/schedule" };
 export const accountLink: NavLink = { label: "Log in", href: "/login" };
-export const cartLink: NavLink = { label: "Cart", href: "/cart" };
 
 /** Small links under the mobile menu list. */
 export const mobileSubNav: NavLink[] = [
   accountLink,
   donateLink,
-  { label: "Refer a friend", href: "/refer" },
+  // { label: "Refer a friend", href: "/refer" }, // hidden until Phase 7 (owner 2026-11-11)
 ];
 
 export type FooterColumn = { title: string; links: NavLink[] };
@@ -36,9 +34,8 @@ export const footerColumns: FooterColumn[] = [
   {
     title: "Explore",
     links: [
-      { label: "Shop", href: "/shop" },
       { label: "About", href: "/about" },
-      { label: "Refer a friend", href: "/refer" },
+      // { label: "Refer a friend", href: "/refer" }, // hidden until Phase 7 (owner 2026-11-11)
       { label: "Donate", href: "/donate" },
       { label: "FAQ", href: "/faq" },
       { label: "Contact", href: "/contact" },

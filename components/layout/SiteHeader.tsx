@@ -8,7 +8,6 @@ import { Icon } from "@/components/ui/Icon";
 import {
   accountLink,
   bookLink,
-  cartLink,
   donateLink,
   isActivePath,
   mainNav,
@@ -103,9 +102,6 @@ export function SiteHeader() {
             className={`${iconBtn} hidden nav:grid`}
           >
             <Icon name="user" />
-          </Link>
-          <Link href={cartLink.href} aria-label={cartLink.label} className={`${iconBtn} grid`}>
-            <Icon name="bag" />
           </Link>
           <Link
             href={bookLink.href}

@@ -2,6 +2,7 @@
 import type { PrismaClient } from "./generated/prisma/client";
 import { CANCELLATION_HOURS, EVENT_REFUND_DAYS } from "./booking-rules";
 import { sendMail } from "./mail";
+import { formatEuro } from "./orders-service";
 import { BUSINESS_TZ, formatDateTime } from "./time";
 
 type SessionForMail = {
@@ -63,5 +64,35 @@ export async function sendBookingConfirmations(db: PrismaClient, bookingIds: str
     } catch (error) {
       console.error("[mail] confirmation failed", error instanceof Error ? error.message : error);
     }
+  }
+}
+
+// ---------- Donations ----------
+
+/** Thank-you email for a stand-alone donation. Plain text. No tax or charity claim (owner has not confirmed any). */
+export function buildDonationThanksMail(to: string, amountCents: number, name?: string | null) {
+  const amount = formatEuro(amountCents);
+  const text = [
+    name ? `Dear ${name.replace(/[\r\n]+/g, " ").trim()},` : "Hello,",
+    "",
+    `Thank you for your gift of ${amount}. Your donation has arrived. It means a lot to us.`,
+    "",
+    "KEA by Atiana (demo site)",
+  ].join("\n");
+  return { to, subject: "Thank you for your gift", text };
+}
+
+/**
+ * Sends the thank-you email after the webhook marked a donation order PAID. Never throws.
+ * Only for stand-alone donations: event donations (an order that has bookings) get the booking email instead.
+ */
+export async function sendDonationThanks(db: PrismaClient, orderId: string, name?: string | null) {
+  try {
+    const order = await db.order.findUnique({ where: { id: orderId }, include: { items: true, bookings: { select: { id: true }, take: 1 } } });
+    if (!order || order.status !== "PAID") return;
+    if (order.bookings.length > 0 || !order.items.some((i) => i.type === "DONATION")) return;
+    await sendMail(buildDonationThanksMail(order.email, order.totalCents, name));
+  } catch (error) {
+    console.error("[mail] donation thanks failed", error instanceof Error ? error.message : error);
   }
 }
