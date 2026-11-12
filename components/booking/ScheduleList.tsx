@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
-import { spotsLabel } from "@/lib/booking-rules";
+import { priceText, spotsLabel } from "@/lib/booking-rules";
 import type { ScheduleItem } from "@/lib/catalog-queries";
 import { dayKey, formatDayLong, formatDayShort, formatTime } from "@/lib/time";
 import { useVisitorTimeZone } from "./LocalTime";
@@ -44,7 +44,14 @@ export function ScheduleList({ items, bookedIds }: { items: ScheduleItem[]; book
                         <span>{c.mode === "ONLINE" ? "Online · Zoom" : `In person · ${c.location ?? ""}`}</span>
                         <span className="dot" aria-hidden="true" />
                         <span>{c.minutes} min</span>
+                        <span className="dot" aria-hidden="true" />
+                        <span>{priceText(c.priceCents)}</span>
                       </div>
+                      {c.activationAfterMinutes && (
+                        <p className="hint" style={{ margin: "4px 0 0" }}>
+                          Greeting first. Activation at {formatTime(new Date(start.getTime() + c.activationAfterMinutes * 60_000), tz)}. The door closes then.
+                        </p>
+                      )}
                     </div>
                     <div className="act">
                       {mine ? (
@@ -66,7 +73,7 @@ export function ScheduleList({ items, bookedIds }: { items: ScheduleItem[]; book
                           Full
                         </button>
                       ) : (
-                        <Link className="btn btn-primary btn-sm" href={`/book/class?session=${c.id}`} aria-label={`Book ${label}`}>
+                        <Link className="btn btn-primary btn-sm" href={`/book/class?session=${c.id}`} prefetch={false} aria-label={`Book ${label}`}>
                           Book
                         </Link>
                       )}

@@ -1,53 +1,74 @@
 /**
- * Demo catalog for classes, packs and 1:1 (texts and prices from docs/demo-content.md, approved 2026-11-09).
- * DEMO PRICES ONLY. The owner sets real prices later.
+ * Catalog for classes, packs and 1:1. Classes = the 4 real classes of Atiana (docs/real-sessions-content.md, 2026-11-12);
+ * 1:1 and packs are still demo. DEMO PRICES ONLY. The owner sets real prices later.
  * Used by the pages (so /classes works without a database) and by prisma/seed-classes.ts.
  */
+import { DEFAULT_CAPACITY } from "@/lib/booking-rules";
+import { TEXT_BLITZ, TEXT_DIVE_DEEP, TEXT_GRATITUDE, TEXT_KEA, type SessionLongText } from "./session-texts";
 import type { Mode } from "@/lib/generated/prisma/enums";
 
-export const SINGLE_CLASS_PRICE_CENTS = 1500; // demo price
-export const DEMO_ZOOM_URL = "https://zoom.us/j/0000000000"; // placeholder from the plan
+export const DEMO_ZOOM_URL = "https://zoom.example/demo-link-placeholder"; // placeholder only: the real link is never stored in code
 export const DEMO_SESSION_WEEKS = 8;
-export const DEMO_CLASS_CAPACITY = 12;
+export const DEMO_CLASS_CAPACITY = DEFAULT_CAPACITY; // the number lives in lib/booking-rules.ts
 
 export type ClassType = {
   slug: string;
   title: string;
   level: string;
   minutes: number;
+  /** Price of ONE class in cents. 0 = free class (login needed, no Stripe, no credit). */
+  priceCents: number;
+  /** Short text for cards and search engines (max 160 characters) */
   text: string;
+  /** Full text: opening, what happens, what you need, how to join */
+  long: SessionLongText;
+  /** Classes with a greeting first: minutes between the start and the main activation (the door closes at the activation) */
+  activationAfterMinutes?: number;
 };
 
+/** The 4 real classes (Phase 11, owner decision 2026-11-12). Prices are demo prices: EUR 20 / free / EUR 30. */
 export const classTypes: ClassType[] = [
   {
-    slug: "morning-energy-class",
-    title: "Morning Energy Class",
+    slug: "blitz-for-bliss",
+    title: "Blitz for Bliss - 30 minutes Kundalini Energy Activation",
     level: "All levels",
-    minutes: 45,
-    text: "Start your day with slow movement and warm, steady breathing. We wake up the body gently and set a clear mood for the hours ahead. You will learn simple moves you can repeat at home. The pace is easy and you can adjust everything to your own comfort. Many people say they feel awake and a little lighter afterwards. Bring a glass of water and wear comfortable clothes. Come as you are, even if you are still half asleep.",
+    minutes: 30,
+    priceCents: 2000,
+    text: "A 30-minute online Kundalini Energy Activation for busy souls. Lie down at home and receive energy transmission with Atiana.",
+    long: TEXT_BLITZ,
   },
   {
-    slug: "evening-transmission",
-    title: "Evening Transmission",
+    slug: "dive-deep",
+    title: "Dive Deep - 1.5 hours Kundalini Energy Activation and transmission",
+    level: "All levels",
+    minutes: 90,
+    priceCents: 3000,
+    text: "A 90-minute online Kundalini Energy Activation and transmission with Atiana. Greeting first, then a deep activation.",
+    long: TEXT_DIVE_DEEP,
+    activationAfterMinutes: 30,
+  },
+  {
+    slug: "gratitude",
+    title: "Gratitude - 30 minutes Kundalini Energy Activation",
+    level: "All levels",
+    minutes: 30,
+    priceCents: 0,
+    text: "A free 30-minute online Kundalini Energy Activation with Atiana. Lie down at home, listen to music and let gratitude arise.",
+    long: TEXT_GRATITUDE,
+  },
+  {
+    slug: "kundalini-energy-activation",
+    title: "Kundalini Energy Activation by Atiana",
     level: "All levels",
     minutes: 60,
-    text: "A quiet hour to close your day. We begin with soft breathing, then we sit in guided stillness. The teacher leads you with a calm voice and gives you time to rest between steps. You may feel more settled before bed. You do not need to do anything perfectly. Dim the lights, find a comfortable seat or lie down, and let the evening slow. This class is a good way to mark the end of a busy day.",
-  },
-  {
-    slug: "beginners-introduction",
-    title: "Beginners' Introduction",
-    level: "Beginners",
-    minutes: 45,
-    text: "New to breath and energy practice? Start here. We explain every step in plain words and go slowly. You will learn three basic breathing patterns, a simple way to sit, and how to rest. There are no hard poses and no special knowledge needed. You can ask questions at any point. By the end you will have a small routine to try at home. This is the best first class for anyone who feels unsure.",
-  },
-  {
-    slug: "breath-and-stillness",
-    title: "Breath & Stillness",
-    level: "All levels",
-    minutes: 45,
-    text: "A soft class built around the breath. We practise slow, even breathing and then rest in silence together. There is very little movement, so it suits tired days and busy minds. You may notice you feel calmer and more spacious. Stay as long as is comfortable and pause whenever you need to. If a breathing pattern does not feel right, return to normal breathing. Perfect for a lunch break or a quiet evening.",
+    priceCents: 3000,
+    text: "KEA (Kundalini Energy Activation) is an online session of energy transmission with Atiana. Lie down, listen to music and allow what arises.",
+    long: TEXT_KEA,
   },
 ];
+
+/** The 4 first demo classes. They are hidden (published = false) by the seed, never deleted. */
+export const HIDDEN_DEMO_CLASS_SLUGS = ["morning-energy-class", "evening-transmission", "beginners-introduction", "breath-and-stillness"] as const;
 
 export type PackDef = {
   name: string;
@@ -69,14 +90,14 @@ export const oneToOnePacks: PackDef[] = [
 ];
 
 /**
- * Weekly demo pattern (approved 2026-11-09): Tuesday, Thursday, Friday, Sunday.
- * Times are Europe/Dublin wall-clock times. weekday: 0 = Sunday ... 6 = Saturday.
+ * Weekly pattern of the real classes (owner answers 2026-11-12). Times are Europe/Dublin wall-clock times.
+ * weekday: 0 = Sunday ... 6 = Saturday.
  */
 export const weeklyPattern = [
-  { weekday: 2, hour: 18, minute: 0, classSlug: "beginners-introduction" },
-  { weekday: 4, hour: 12, minute: 30, classSlug: "breath-and-stillness" },
-  { weekday: 5, hour: 7, minute: 30, classSlug: "morning-energy-class" },
-  { weekday: 0, hour: 19, minute: 30, classSlug: "evening-transmission" },
+  { weekday: 2, hour: 12, minute: 0, classSlug: "blitz-for-bliss" },
+  { weekday: 3, hour: 18, minute: 30, classSlug: "dive-deep" },
+  { weekday: 4, hour: 12, minute: 0, classSlug: "gratitude" },
+  { weekday: 0, hour: 19, minute: 30, classSlug: "kundalini-energy-activation" },
 ] as const;
 
 export type OneToOneDef = {

@@ -3,13 +3,16 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { DEMO_ZOOM_URL } from "../content/catalog";
-import { events } from "../content/events";
+import { HIDDEN_DEMO_EVENT_SLUGS, events } from "../content/events";
+import { longTextToMarkdown } from "../content/session-texts";
+import { assertSeedTarget } from "../lib/assert-local-db";
 import { PrismaClient } from "../lib/generated/prisma/client";
 import { zonedToUtc } from "../lib/time";
 
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) throw new Error("DIRECT_URL or DATABASE_URL is not set");
+  assertSeedTarget(url); // local database only (ALLOW_REMOTE_DB_SEED=true only with the owner's OK, task 11.14)
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   console.log(`Seeding database host: ${new URL(url).hostname}`);
   const c = { offerings: [0, 0, 0], prices: [0, 0, 0], sessions: [0, 0, 0] }; // created, updated, unchanged
@@ -19,7 +22,7 @@ async function main() {
         type: "EVENT" as const,
         title: e.title,
         summary: e.summary,
-        body: e.body,
+        body: longTextToMarkdown(e.long),
         image: e.image,
         mode: e.mode,
         location: e.location,
@@ -61,6 +64,12 @@ async function main() {
         c.sessions[0]++;
       }
     }
+    // The 4 first demo events are hidden, never deleted (their sessions and registrations stay in the database).
+    const hide = await prisma.offering.updateMany({
+      where: { slug: { in: [...HIDDEN_DEMO_EVENT_SLUGS] }, published: true },
+      data: { published: false },
+    });
+    console.log(`Old demo events hidden now: ${hide.count}`);
     const f = (n: string, a: number[]) => `${n}: created ${a[0]}, updated ${a[1]}, unchanged ${a[2]}`;
     console.log(f("Event offerings", c.offerings));
     console.log(f("Price options", c.prices));

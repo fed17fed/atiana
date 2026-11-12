@@ -76,7 +76,7 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
             <LocalTime iso={b.startsAt.toISOString()} format="dayTime" />
           </span>
           <span>{b.mode === "ONLINE" ? "Online · Zoom" : "In person"}</span>
-          <span>{b.type === "EVENT" ? (b.eventPricing === "PAID" ? "Event ticket" : "Event") : b.paidWith === "CREDIT" ? "Paid with a credit" : b.paidWith === "STRIPE" ? "Paid by card" : ""}</span>
+          <span>{b.type === "EVENT" ? (b.eventPricing === "PAID" ? "Event ticket" : "Event") : b.paidWith === "CREDIT" ? "Paid with a credit" : b.paidWith === "STRIPE" ? "Paid by card" : b.paidWith === "FREE" ? "Free class" : ""}</span>
         </div>
         {b.status === "CONFIRMED" && b.zoomUrl && (
           <p style={{ margin: 0 }}>
@@ -149,7 +149,9 @@ export default async function BookingsPage({ searchParams }: PageProps<"/account
           <form action={cancelMyBooking} className="row">
             <input type="hidden" name="bookingId" value={b.id} />
             <p className="note">
-              {b.paidWith === "CREDIT"
+              {b.paidWith === "FREE"
+                ? "This class is free. You can cancel any time before it starts."
+                : b.paidWith === "CREDIT"
                 ? b.creditExpired
                   ? "This credit has expired, so it cannot be returned if you cancel."
                   : early

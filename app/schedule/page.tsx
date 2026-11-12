@@ -8,7 +8,8 @@ import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
 import { classTypes, packs } from "@/content/catalog";
-import { CANCELLATION_HOURS } from "@/lib/booking-rules";
+import { packsEnabled } from "@/lib/features";
+import { cancelRuleSentence } from "@/lib/booking-rules";
 import { countUsableCredits, getScheduleWeek, getUserActiveSessionIds, hasSessionsAfter } from "@/lib/catalog-queries";
 import { formatEuro } from "@/lib/orders-service";
 import { safeDb } from "@/lib/safe";
@@ -31,7 +32,7 @@ export default function SchedulePage({ searchParams }: PageProps<"/schedule">) {
       <div className="wrap page-head">
         <h1>Schedule</h1>
         <p className="lead">
-          Times are in your time zone (<TimeZoneName />). Cancel up to {CANCELLATION_HOURS} hours before.
+          Times are in your time zone (<TimeZoneName />). {cancelRuleSentence()}
         </p>
       </div>
       <Suspense fallback={<PageSkeleton minHeight={760} />}>
@@ -130,6 +131,7 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/schedu
             </p>
           )}
         </div>
+        {packsEnabled() && (
         <div className="pack-mini" style={{ marginTop: 20 }}>
           <h2>Save with a pack</h2>
           <p>
@@ -140,6 +142,7 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/schedu
             See packs
           </Link>
         </div>
+        )}
       </aside>
 
       <section aria-label="Classes this week">

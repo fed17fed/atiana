@@ -134,3 +134,42 @@ describe("event rules (7 days) and amounts", () => {
     for (const bad of ["", "-1", "abc", "1.234", "1e3", "10 €", "1000000"]) expect(parseEuroToCents(bad)).toBeNull();
   });
 });
+
+import {
+  BOOKING_CLOSES_AT_START,
+  cancelUpToText,
+  DEFAULT_CAPACITY,
+  isBookingOpen,
+  isFreePrice,
+  priceText,
+  REMINDER_HOURS,
+} from "@/lib/booking-rules";
+
+describe("Phase 11 rules (one place)", () => {
+  it("default capacity is 12 and the reminder window is 24 hours", () => {
+    expect(DEFAULT_CAPACITY).toBe(12);
+    expect(REMINDER_HOURS).toBe(24);
+  });
+  it("no late join: booking closes exactly at the start time", () => {
+    expect(BOOKING_CLOSES_AT_START).toBe(true);
+    expect(isBookingOpen(start, new Date(start.getTime() - 1))).toBe(true);
+    expect(isBookingOpen(start, start)).toBe(false);
+    expect(isBookingOpen(start, new Date(start.getTime() + 60_000))).toBe(false);
+  });
+  it("free price is exactly 0 cents", () => {
+    expect(isFreePrice(0)).toBe(true);
+    expect(isFreePrice(1500)).toBe(false);
+    expect(isFreePrice(null)).toBe(false);
+    expect(isFreePrice(undefined)).toBe(false);
+  });
+  it("price text: free, whole euros, cents, missing", () => {
+    expect(priceText(0)).toBe("Free");
+    expect(priceText(1500)).toBe("€15");
+    expect(priceText(2000)).toBe("€20");
+    expect(priceText(1250)).toBe("€12.50");
+    expect(priceText(null)).toBe("–");
+  });
+  it("cancel sentence is built from the constant", () => {
+    expect(cancelUpToText()).toBe(`Cancel up to ${CANCELLATION_HOURS} hours before`);
+  });
+});

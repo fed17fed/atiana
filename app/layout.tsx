@@ -36,10 +36,10 @@ export const metadata: Metadata = {
     locale: "en_IE",
     images: [
       {
-        url: "/demo/terrace-meditation.webp",
-        width: 1600,
-        height: 1217,
-        alt: "A person sitting in meditation on a wooden terrace in warm evening light",
+        url: "/real/og-share-01.webp",
+        width: 999,
+        height: 523,
+        alt: "Atiana in white in a forest scene with open hands",
       },
     ],
   },

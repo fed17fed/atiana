@@ -39,8 +39,8 @@ describe("site helpers", () => {
     expect(getSiteUrl(env({}))).toBe("http://localhost:3000");
   });
 
-  it("sitemap has home, about, classes, schedule, 1:1, events (list + 4 details), contact, faq and 5 legal pages", () => {
-    expect(sitemapPaths).toHaveLength(18);
+  it("sitemap has home, about, classes, schedule, 1:1, events (list + 7 details), contact, faq and 5 legal pages", () => {
+    expect(sitemapPaths).toHaveLength(21);
     expect(sitemapPaths.filter((p) => p.startsWith("/legal/"))).toHaveLength(5);
   });
 

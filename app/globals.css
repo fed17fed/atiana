@@ -9,6 +9,11 @@
 }
 
 @layer base {
+  /* Sticky header (about 70 px) and the event bar at the bottom must not cover a focused or scrolled-to field (WCAG 2.4.11). */
+  html {
+    scroll-padding-top: 96px;
+    scroll-padding-bottom: 88px;
+  }
   body {
     background: var(--color-cream);
     color: var(--color-plum);

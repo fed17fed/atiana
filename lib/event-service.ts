@@ -13,6 +13,7 @@
 import type { Prisma, PrismaClient } from "./generated/prisma/client";
 import {
   bookingKeys,
+  isBookingOpen,
   isEventRefundable,
   MAX_DONATION_CENTS,
   MIN_CARD_PAYMENT_CENTS,
@@ -73,7 +74,7 @@ export async function registerForEvent(
       });
       const o = session?.offering;
       if (!session || !o || o.type !== "EVENT" || !o.published || !o.eventPricing) return { ok: false, code: "NOT_FOUND" };
-      if (session.status !== "SCHEDULED" || session.startsAt.getTime() <= now.getTime()) return { ok: false, code: "CLOSED" };
+      if (session.status !== "SCHEDULED" || !isBookingOpen(session.startsAt, now)) return { ok: false, code: "CLOSED" };
 
       // Decide the kind and the amount BEFORE reserving anything.
       let kind: "FREE" | "DONATION_ZERO" | "DONATION" | "PAID";

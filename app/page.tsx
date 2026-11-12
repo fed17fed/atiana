@@ -4,7 +4,9 @@ import Link from "next/link";
 import { HomeNewsletterBand } from "@/components/pages/HomeNewsletterBand";
 import { Icon } from "@/components/ui/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { nextClasses, spotsLabel, testimonials } from "@/content/home";
+import { INSTAGRAM_NAME, INSTAGRAM_URL, nextClasses, spotsLabel, TEACHER_BIO, testimonials } from "@/content/home";
+import { classTypes } from "@/content/catalog";
+import { cancelUpToText, priceText } from "@/lib/booking-rules";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/jsonld";
 import { getSiteUrl, SITE_NAME } from "@/lib/site";
 
@@ -56,7 +58,7 @@ export default function Home() {
                 <Icon name="leaf" className="size-5!" /> All levels welcome
               </li>
               <li>
-                <Icon name="check" className="size-5!" /> Cancel up to 24 hours before
+                <Icon name="check" className="size-5!" /> {cancelUpToText()} · free classes any time
               </li>
             </ul>
           </div>
@@ -65,11 +67,12 @@ export default function Home() {
             <div className="hero-sun" aria-hidden="true" />
             <div className="hero-photo">
               <Image
-                src="/demo/terrace-meditation.webp"
-                alt="A person sitting in meditation on a wooden terrace in warm evening light"
-                width={800}
-                height={1000}
+                src="/real/hero-home-01.webp"
+                alt="Woman in white sitting in a forest scene with one arm raised and one hand open, eyes closed"
+                width={650}
+                height={812}
                 priority
+                fetchPriority="high"
                 sizes="(min-width: 900px) 430px, 90vw"
               />
             </div>
@@ -178,7 +181,7 @@ export default function Home() {
                 <p>Live on Zoom, every week. All levels.</p>
                 <div className="foot">
                   <span className="price">
-                    <small>From </small>€15
+                    <small>Free or from </small>{priceText(Math.min(...classTypes.filter((c) => c.priceCents > 0).map((c) => c.priceCents)))}
                   </span>
                   <span className="link-arrow">
                     See classes <Icon name="arrow" className="size-[18px]!" />
@@ -263,14 +266,14 @@ export default function Home() {
               <span className="n" aria-hidden="true">2</span>
               <div>
                 <h3>Book and pay</h3>
-                <p>Pay once, or use a credit from a class pack.</p>
+                <p>Pay once, use a credit, or join a free class.</p>
               </div>
             </li>
             <li>
               <span className="n" aria-hidden="true">3</span>
               <div>
                 <h3>Join on Zoom</h3>
-                <p>Your link comes by email. Cancel up to 24 hours before and keep your credit.</p>
+                <p>Your link comes by email. {cancelUpToText()} and keep your credit. Free classes: cancel any time before the start.</p>
               </div>
             </li>
           </ol>
@@ -283,26 +286,22 @@ export default function Home() {
           <div className="pic">
             <div className="arch-ph">
               <Image
-                src="/demo/teacher-portrait-demo.webp"
-                alt="Portrait of Aoife Brennan, the demo teacher (stock photo, demo)"
-                width={800}
-                height={1000}
+                src="/real/teacher-home-01.webp"
+                alt="Portrait of Atiana in a white blouse, eyes closed, in a forest scene"
+                width={418}
+                height={523}
                 sizes="(min-width: 860px) 400px, 90vw"
               />
             </div>
-            <span className="badge b-low demo-tag">Demo teacher</span>
           </div>
           <div>
             <p className="eyebrow">Meet your teacher</p>
-            <h2 id="teacher-h">Hello, I am Aoife.</h2>
+            <h2 id="teacher-h">Hello, I am Atiana.</h2>
+            <p>{TEACHER_BIO}</p>
             <p>
-              I found breath practice during a long, grey winter in Galway. Five quiet minutes each
-              morning slowly changed my days. Today I guide small groups on Zoom and by the sea. A
-              class with me is gentle, clear and never rushed. You do not need to be flexible or
-              calm. You only need to show up.
-            </p>
-            <p className="hint">
-              Demo text. The teacher, the name and the photo are invented for this demo.
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">
+                Instagram: @{INSTAGRAM_NAME}
+              </a>
             </p>
             <Link className="btn btn-outline" href="/about">
               About KEA by Atiana
@@ -311,7 +310,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials (demo) */}
+      {/* Testimonials: invented demo reviews, each one is labelled "Demo review" (owner decision 2026-11-12) */}
       <section className="sec" aria-labelledby="quotes-h">
         <div className="wrap">
           <h2 id="quotes-h" style={{ marginBottom: 28 }}>
@@ -323,7 +322,7 @@ export default function Home() {
                 <blockquote>“{t.quote}”</blockquote>
                 <figcaption>
                   <span className="who">{t.who}</span>
-                  <span className="tag-demo">Demo testimonial</span>
+                  <span className="tag-demo">Demo review</span>
                 </figcaption>
               </figure>
             ))}

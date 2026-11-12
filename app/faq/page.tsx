@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { faqGroups } from "@/content/faq";
+import { visibleFaqGroups } from "@/content/faq";
+import { packsEnabled, referralEnabled } from "@/lib/features";
 import { faqJsonLd } from "@/lib/jsonld";
 
 export const metadata: Metadata = {
   title: "FAQ",
   description:
-    "Answers about classes, Zoom, class packs and credits, booking and cancellation and 1:1 sessions.",
+    "Answers about classes, Zoom, credits, booking and cancellation and 1:1 sessions.",
   alternates: { canonical: "/faq" },
   openGraph: { title: "Questions people ask – KEA by Atiana", url: "/faq" },
 };
 
 export default function FaqPage() {
+  const faqGroups = visibleFaqGroups(packsEnabled(), referralEnabled());
   return (
     <section className="sec" aria-labelledby="faq-h">
       <JsonLd data={faqJsonLd(faqGroups)} />

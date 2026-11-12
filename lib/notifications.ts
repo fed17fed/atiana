@@ -31,7 +31,7 @@ export function buildBookingMail(
   const intro =
     kind === "confirmation"
       ? "Your booking is confirmed."
-      : "A friendly reminder about your class in the next 24 hours.";
+      : `A friendly reminder about your class in the next ${CANCELLATION_HOURS} hours.`;
   const text = [
     intro,
     "",

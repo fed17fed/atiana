@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { cancelBooking, createBooking, type BookingErrorCode } from "@/lib/booking-service";
+import { packsEnabled } from "@/lib/features";
 import { mailConfig } from "@/lib/mail";
 import { sendBookingConfirmations } from "@/lib/notifications";
 import { createPackageOrder } from "@/lib/orders-service";
@@ -18,7 +19,7 @@ export type BookState =
 const bookSchema = z.object({
   sessionId: z.string().trim().min(1).max(60),
   kind: z.enum(["class", "one"]),
-  pay: z.enum(["card", "credit"], { error: "Please choose how you want to pay." }),
+  pay: z.enum(["card", "credit", "free"], { error: "Please choose how you want to pay." }),
   disclaimer: z.literal("on", { error: "Please confirm that you have read the Health Disclaimer." }),
 });
 
@@ -31,6 +32,7 @@ const ERROR_TEXT: Record<BookingErrorCode, string> = {
   NO_PRICE: "This class has no price yet. Please try again later.",
   DISCLAIMER: "Please confirm that you have read the Health Disclaimer.",
   TYPE_MISMATCH: "This booking page does not match the class. Please start again from the schedule.",
+  NOT_FREE: "This class is not free. Please choose how you want to pay.",
 };
 
 /** Slot wording for 1:1 bookings (a slot is a time, not a class). */
@@ -66,7 +68,7 @@ export async function startBooking(_prev: BookState, formData: FormData): Promis
     result = await createBooking(prisma, {
       userId: user.id,
       sessionId,
-      method: pay === "credit" ? "CREDIT" : "STRIPE",
+      method: pay === "credit" ? "CREDIT" : pay === "free" ? "FREE" : "STRIPE",
       disclaimerAccepted: true,
       expectType: kind === "one" ? "ONE_TO_ONE" : "GROUP_CLASS",
     });
@@ -76,7 +78,8 @@ export async function startBooking(_prev: BookState, formData: FormData): Promis
   }
   if (!result.ok) return { status: "error", message: kind === "one" ? (ERROR_TEXT_SLOT[result.code] ?? ERROR_TEXT[result.code]) : ERROR_TEXT[result.code], field: result.code === "NO_CREDIT" ? "pay" : undefined };
 
-  if (pay === "credit") {
+  // Credit and free bookings are confirmed at once. A free class never goes to Stripe (also when the form said "card").
+  if (result.paidWith !== "STRIPE") {
     await sendBookingConfirmations(prisma, [result.bookingId]);
     // Honest text: the page says when confirmation emails are off (demo).
     redirect(`/account/bookings?booked=${mailConfig() ? "1" : "demo"}`);
@@ -115,6 +118,8 @@ export type PackState = BookState;
 
 /** Buys a class pack with Stripe Checkout (OFF without Stripe keys). Credits arrive after the webhook. */
 export async function buyPack(_prev: PackState, formData: FormData): Promise<PackState> {
+  // Packs are hidden on the site (lib/features.ts). The code stays; the action is closed too.
+  if (!packsEnabled()) return { status: "error", message: "Class packs are not available right now." };
   const parsed = packSchema.safeParse(Object.fromEntries(formData.entries()));
   if (!parsed.success) return { status: "error", message: "Please choose a pack." };
 

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LocalRange, TimeZoneName } from "@/components/booking/LocalTime";
+import { ActivationTime } from "@/components/booking/ActivationTime";
+import { SessionText } from "@/components/pages/SessionText";
 import { EventRegisterForm } from "@/components/events/EventRegisterForm";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
@@ -21,7 +23,7 @@ import { getSiteUrl } from "@/lib/site";
 import { stripeConfig } from "@/lib/stripe-service";
 import { zonedToUtc } from "@/lib/time";
 
-// The 4 event pages are prerendered at build time (generateStaticParams), so reading `params` blocks nothing.
+// The event pages are prerendered at build time (generateStaticParams), so reading `params` blocks nothing.
 // This lets a wrong slug answer with a real 404 before anything is streamed.
 export const instant = false;
 
@@ -96,6 +98,14 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
                 <dt>Length</dt>
                 <dd>{e.lengthLabel}</dd>
               </div>
+              {e.activationAfterMinutes && (
+                <div>
+                  <dt>Greeting and activation</dt>
+                  <dd>
+                    <ActivationTime startIso={startsAt.toISOString()} afterMinutes={e.activationAfterMinutes} />
+                  </dd>
+                </div>
+              )}
               <div>
                 <dt>Place</dt>
                 <dd>{e.mode === "ONLINE" ? "Online (Zoom)" : e.location}</dd>
@@ -112,16 +122,10 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
               <h2 id="about-h" style={{ fontSize: "1.6rem" }}>
                 About this event
               </h2>
-              <p>{e.body}</p>
+              <SessionText text={e.long} headingLevel={3} />
               <p>
                 <Link href="/legal/health-disclaimer">Health notice</Link>
               </p>
-            </section>
-            <section aria-labelledby="extra-h">
-              <h2 id="extra-h" style={{ fontSize: "1.6rem" }}>
-                {e.extraTitle}
-              </h2>
-              <p>{e.extra}</p>
             </section>
             <section aria-labelledby="cancel-h">
               <h2 id="cancel-h" style={{ fontSize: "1.6rem" }}>

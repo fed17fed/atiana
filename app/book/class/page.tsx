@@ -3,13 +3,14 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { BookForm } from "@/components/booking/BookForm";
 import { LocalTime, TimeZoneName } from "@/components/booking/LocalTime";
+import { ActivationTime } from "@/components/booking/ActivationTime";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
-import { CANCELLATION_HOURS, spotsLabel } from "@/lib/booking-rules";
+import { CANCELLATION_HOURS, isFreePrice, priceText, spotsLabel } from "@/lib/booking-rules";
 import { countUsableCredits, getBookableSession } from "@/lib/catalog-queries";
-import { formatEuro } from "@/lib/orders-service";
+import { classTypes } from "@/content/catalog";
 import { safeDb } from "@/lib/safe";
 import { getCurrentUser } from "@/lib/session";
 import { stripeConfig } from "@/lib/stripe-service";
@@ -56,7 +57,9 @@ async function Body({ searchParams }: { searchParams: PageProps<"/book/class">["
   if (!data.s || data.s.type !== "GROUP_CLASS") notFound();
   const c = data.s.item;
   const full = c.spotsLeft <= 0;
-  const price = c.priceCents !== null ? formatEuro(c.priceCents) : "–";
+  const price = priceText(c.priceCents);
+  const free = isFreePrice(c.priceCents);
+  const activationAfter = classTypes.find((t) => t.slug === c.slug)?.activationAfterMinutes;
   const loginHref = `/login?next=${encodeURIComponent(`/book/class?session=${sessionId}`)}`;
 
   return (
@@ -74,6 +77,14 @@ async function Body({ searchParams }: { searchParams: PageProps<"/book/class">["
             <span className="hint">
               Your time zone: <TimeZoneName />. {spotsLabel(c.spotsLeft)}.
             </span>
+            {activationAfter && (
+              <>
+                <br />
+                <span className="hint">
+                  <ActivationTime startIso={c.startsAt} afterMinutes={activationAfter} /> The door closes when the activation starts.
+                </span>
+              </>
+            )}
           </p>
           {full ? (
             <div className="alert a-warn" role="status">
@@ -90,6 +101,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/book/class">["
               loggedIn={!!user}
               credits={data.credits}
               paymentsOn={stripeConfig() !== null}
+              free={free}
               loginHref={loginHref}
             />
           )}
@@ -106,7 +118,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/book/class">["
           <p className="note">
             <Icon name="check" />
             <span>
-              Cancel up to {CANCELLATION_HOURS} hours before. The Zoom link is sent after your booking is confirmed.
+              {free ? "Cancel any time before it starts." : `Cancel up to ${CANCELLATION_HOURS} hours before.`} The Zoom link is sent after your booking is confirmed.
             </span>
           </p>
         </aside>

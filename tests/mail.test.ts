@@ -41,13 +41,13 @@ describe("mail is OFF without keys", () => {
 describe("booking mails", () => {
   const session = {
     startsAt: new Date("2026-11-17T18:00:00Z"),
-    zoomUrl: "https://zoom.us/j/0000000000",
+    zoomUrl: "https://zoom.example/demo-link-placeholder",
     location: null,
     offering: { title: "Beginners' Introduction", mode: "ONLINE" as const, location: null },
   };
   it("confirmation has the Zoom link, the time and the cancellation hours from the constant", () => {
     const m = buildBookingMail("confirmation", "a@b.test", session);
-    expect(m.text).toContain("https://zoom.us/j/0000000000");
+    expect(m.text).toContain("https://zoom.example/demo-link-placeholder");
     expect(m.text).toContain("Tue 17 Nov, 18:00");
     expect(m.text).toContain(`${CANCELLATION_HOURS} hours`);
     expect(m.subject).toContain("You are booked");

@@ -17,10 +17,12 @@ type Props = {
   credits: number;
   paymentsOn: boolean;
   loginHref: string;
+  /** Free class (price 0): no payment choice, no Stripe, no credit. Login and the health checkbox are still needed. */
+  free?: boolean;
 };
 
 /** Pay-method choice + health disclaimer checkbox. Works without JavaScript (server action). */
-export function BookForm({ sessionId, kind, priceLabel, loggedIn, credits, paymentsOn, loginHref }: Props) {
+export function BookForm({ sessionId, kind, priceLabel, loggedIn, credits, paymentsOn, loginHref, free = false }: Props) {
   const [state, action, pending] = useActionState(startBooking, initial);
   // Controlled, because React clears plain form fields after a server action (even after an error).
   const [agreed, setAgreed] = useState(false);
@@ -50,7 +52,8 @@ export function BookForm({ sessionId, kind, priceLabel, loggedIn, credits, payme
           </div>
         </div>
       )}
-      {!paymentsOn && state.status === "idle" && (
+      {free && <input type="hidden" name="pay" value="free" />}
+      {!free && !paymentsOn && state.status === "idle" && (
         <div className="alert a-info" role="status">
           <Icon name="info" />
           <div>
@@ -59,6 +62,16 @@ export function BookForm({ sessionId, kind, priceLabel, loggedIn, credits, payme
         </div>
       )}
 
+      {free && (
+        <div className="alert a-info" role="status">
+          <Icon name="check" />
+          <div>
+            <p>This {kindWord} is free. You only need to log in and confirm the health notice.</p>
+          </div>
+        </div>
+      )}
+
+      {!free && (
       <fieldset className="stack" style={{ gap: 10, border: 0, padding: 0, margin: 0 }}>
         <legend className="legend" style={{ marginBottom: 8 }}>
           How do you want to pay?
@@ -99,6 +112,7 @@ export function BookForm({ sessionId, kind, priceLabel, loggedIn, credits, payme
           <span className="opt-price">€0</span>
         </label>
       </fieldset>
+      )}
 
       <div>
         <label className={`check ${disclaimerError ? "has-error" : ""}`}>
@@ -126,17 +140,17 @@ export function BookForm({ sessionId, kind, priceLabel, loggedIn, credits, payme
       </div>
 
       <p className="hint" style={{ margin: 0 }}>
-        You can cancel up to {CANCELLATION_HOURS} hours before the {kindWord} starts.
-        {!loggedIn && " You log in with an email link before you pay."}
+        {free ? `You can cancel any time before the ${kindWord} starts.` : `You can cancel up to ${CANCELLATION_HOURS} hours before the ${kindWord} starts.`}
+        {!loggedIn && (free ? " You log in with an email link before you book." : " You log in with an email link before you pay.")}
       </p>
 
       <div className="actions-bar">
         <div className="total">
-          <span>{pay === "credit" ? "1 credit" : priceLabel}</span>
+          <span>{free ? "Free" : pay === "credit" ? "1 credit" : priceLabel}</span>
         </div>
         {loggedIn ? (
           <button className="btn btn-primary" type="submit" disabled={pending}>
-            {pending ? "Please wait..." : pay === "credit" ? "Book with 1 credit" : "Continue to payment"}
+            {pending ? "Please wait..." : free ? "Book for free" : pay === "credit" ? "Book with 1 credit" : "Continue to payment"}
           </button>
         ) : (
           <Link className="btn btn-primary" href={loginHref}>

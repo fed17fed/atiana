@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
+import { SessionText } from "@/components/pages/SessionText";
 import { PackBuyForm } from "@/components/booking/PackBuyForm";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { Icon } from "@/components/ui/Icon";
-import { classTypes, packs, SINGLE_CLASS_PRICE_CENTS } from "@/content/catalog";
-import { CANCELLATION_HOURS } from "@/lib/booking-rules";
+import { classTypes, packs } from "@/content/catalog";
+import { CANCELLATION_HOURS, cancelRuleSentence, priceText } from "@/lib/booking-rules";
+import { packsEnabled } from "@/lib/features";
 import { getActivePackages } from "@/lib/catalog-queries";
 import { formatEuro } from "@/lib/orders-service";
 import { safeDb } from "@/lib/safe";
@@ -33,9 +35,11 @@ export default function ClassesPage() {
           <Link className="btn btn-primary" href="/schedule">
             See the schedule
           </Link>
-          <a className="btn btn-outline" href="#packs">
-            Buy a pack
-          </a>
+          {packsEnabled() && (
+            <a className="btn btn-outline" href="#packs">
+              Buy a pack
+            </a>
+          )}
         </div>
       </div>
 
@@ -52,27 +56,49 @@ export default function ClassesPage() {
                   <span>{c.level}</span>
                   <span>{c.minutes} minutes</span>
                   <span>Online (Zoom)</span>
+                  <span><b>{priceText(c.priceCents)}</b></span>
                 </div>
                 <p>{c.text}</p>
+                {c.activationAfterMinutes && (
+                  <p className="hint">
+                    Greeting first. The main activation starts {c.activationAfterMinutes} minutes after the start. The door closes then.
+                  </p>
+                )}
+                <details>
+                  <summary>Read the full description</summary>
+                  <SessionText text={c.long} headingLevel={3} />
+                </details>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="sec sand" id="packs" aria-labelledby="prices-h">
-        <div className="wrap">
-          <p className="eyebrow">Prices (demo prices)</p>
-          <h2 id="prices-h">Single class or save with a pack</h2>
-          <p className="lead">
-            Single class: <b>{formatEuro(SINGLE_CLASS_PRICE_CENTS)}</b>. One credit books one class. Cancel up to{" "}
-            {CANCELLATION_HOURS} hours before and your credit comes back.
-          </p>
-          <Suspense fallback={<StaticPacks />}>
-            <PacksFromDb />
-          </Suspense>
-        </div>
-      </section>
+      {packsEnabled() ? (
+        <section className="sec sand" id="packs" aria-labelledby="prices-h">
+          <div className="wrap">
+            <p className="eyebrow">Prices (demo prices)</p>
+            <h2 id="prices-h">Single class or save with a pack</h2>
+            <p className="lead">
+              The price of each class is shown on its card. One credit books one class. Cancel up to {CANCELLATION_HOURS} hours
+              before and your credit comes back.
+            </p>
+            <Suspense fallback={<StaticPacks />}>
+              <PacksFromDb />
+            </Suspense>
+          </div>
+        </section>
+      ) : (
+        <section className="sec sand" aria-labelledby="prices-h">
+          <div className="wrap">
+            <p className="eyebrow">Prices (demo prices)</p>
+            <h2 id="prices-h">Prices</h2>
+            <p className="lead">
+              The price of each class is shown on its card. {cancelRuleSentence()}
+            </p>
+          </div>
+        </section>
+      )}
     </>
   );
 }

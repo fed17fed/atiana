@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { INSTAGRAM_NAME, INSTAGRAM_URL, TEACHER_BIO } from "@/content/home";
+import { JOIN_EARLY_MINUTES } from "@/lib/booking-rules";
 
 export const metadata: Metadata = {
   title: "About",
   description:
-    "KEA by Atiana is a small, friendly space for breath, energy and stillness. Meet the demo teacher and see what to expect in a class.",
+    "KEA by Atiana is a small, friendly space for breath, energy and stillness. Meet Atiana and see what to expect in a session.",
   alternates: { canonical: "/about" },
   openGraph: { title: "About KEA by Atiana", url: "/about" },
 };
@@ -13,13 +15,13 @@ export const metadata: Metadata = {
 const values = [
   { title: "Gentle", text: "We go at your pace. You can rest, skip or sit out any part of a class." },
   { title: "Clear", text: "We use simple words and short steps. No special terms, no pressure." },
-  { title: "Welcoming", text: "All levels, all bodies, all backgrounds. Camera on or off, you belong here." },
+  { title: "Welcoming", text: "All levels, all bodies, all backgrounds. You belong here." },
 ];
 
 const expect = [
-  { title: "Before", text: "You get an email with your Zoom link. Find a quiet spot and sit on a chair or the floor. Wear comfortable clothes. Have water nearby." },
-  { title: "At the start", text: "We open the room 10 minutes early. The teacher says hello and explains the plan." },
-  { title: "During the class", text: "We move slowly, breathe and rest. You can keep your camera off. You can stop at any time." },
+  { title: "Before", text: "You get an email with your Zoom link. Find a quiet spot with a yoga mat or a comfy rug. Wear comfortable clothes. Have water nearby." },
+  { title: "At the start", text: `Please join ${JOIN_EARLY_MINUTES} minutes before the start. Doors close at the start time, and we cannot let you in later.` },
+  { title: "During the class", text: "You lie down, listen to music and allow what arises. Please keep your camera on, with your full body visible. You can stop at any time." },
   { title: "After", text: "There is a short quiet minute. You can ask questions. Then you get a short thank-you email." },
 ];
 
@@ -47,43 +49,32 @@ export default function AboutPage() {
       </section>
 
       <section className="sec sand" aria-labelledby="story-h">
-        <div className="wrap story">
-          <h2 id="story-h">Our story</h2>
-          <p>KEA began with a simple idea. Everyone should have a quiet place to stop for a moment.</p>
-          <p>
-            Aoife Brennan, our demo teacher, found breath practice in a long, grey winter in Galway.
-            She was tired and busy. A friend showed her a few slow breaths before work. It took five
-            minutes. The day felt a little softer. She kept going, one morning at a time.
-          </p>
-          <p>
-            Over the years she studied with different teachers and practised on her own. She learned
-            that you do not need a special room, special clothes or a calm mind. You need a chair, a
-            floor or a bed. You need a little time. And it helps to have someone to guide you.
-          </p>
-          <p>
-            First she taught friends in her kitchen. Then people asked for classes they could join
-            from home. So she moved the classes to Zoom. Now people join from Dublin, Cork, Galway
-            and from far away. Some come every week. Some come once in a while. Both are fine.
-          </p>
-          <p>
-            We keep our groups small. We use plain words. We explain every step. If you are new, we
-            will not rush you. If you have practised for years, there is always something fresh to
-            notice.
-          </p>
-          <p>
-            KEA is not a medical service. We do not treat illness and we do not make promises about
-            results. We offer a calm hour, a clear guide and a kind group. Many people tell us they
-            feel more relaxed after class. We hope you will too.
-          </p>
-          <p>
-            We also love to share. You can invite a friend with your link, or join one of our
-            events. Everything is made to help you build a small, steady habit.
-          </p>
-          <p>Thank you for being here. We look forward to practising with you.</p>
-          <p className="hint">
-            Demo text. The story, the teacher and the photos are invented for this demo. [OWNER:
-            real story, real teacher names]
-          </p>
+        <div className="wrap teacher">
+          <div className="pic">
+            <div className="arch-ph">
+              <Image
+                src="/real/teacher-home-01.webp"
+                alt="Portrait of Atiana in a white blouse, eyes closed, in a forest scene"
+                width={418}
+                height={523}
+                sizes="(min-width: 860px) 400px, 90vw"
+              />
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow">Meet your teacher</p>
+            <h2 id="story-h">Hello, I am Atiana.</h2>
+            <p>{TEACHER_BIO}</p>
+            <p>
+              <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">
+                Instagram: @{INSTAGRAM_NAME}
+              </a>
+            </p>
+            <p>
+              KEA is not a medical service. We do not treat illness and we do not make promises about results. Please
+              read our <Link href="/legal/health-disclaimer">Health notice</Link>.
+            </p>
+          </div>
         </div>
       </section>
 

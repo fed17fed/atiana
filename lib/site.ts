@@ -1,5 +1,7 @@
 /** Site-wide constants and environment switches (no secrets here). */
 
+import { events } from "@/content/events";
+
 export const SITE_NAME = "KEA by Atiana";
 export const SITE_DESCRIPTION =
   "Live classes, 1:1 sessions and events for breath, energy and stillness.";
@@ -32,10 +34,7 @@ export const sitemapPaths = [
   "/schedule",
   "/one-to-one",
   "/events",
-  "/events/winter-breath-hour",
-  "/events/sound-and-stillness-sunday",
-  "/events/winter-light-half-day",
-  "/events/slow-morning-by-the-hills",
+  ...events.map((e) => `/events/${e.slug}`),
   "/donate",
   "/contact",
   "/faq",

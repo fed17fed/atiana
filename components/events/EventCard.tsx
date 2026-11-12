@@ -23,12 +23,13 @@ export type EventCardData = {
   spotsLeft: number | null;
 };
 
-export function EventCard({ e }: { e: EventCardData }) {
+/** `priority` = the first card above the fold: image loads eagerly with high priority (others stay lazy). */
+export function EventCard({ e, priority = false }: { e: EventCardData; priority?: boolean }) {
   const full = e.spotsLeft !== null && e.spotsLeft <= 0;
   return (
     <article className="card">
       <div className="media">
-        <Image src={e.image} alt={e.imageAlt} width={800} height={600} sizes="(min-width: 900px) 380px, 90vw" />
+        <Image src={e.image} alt={e.imageAlt} width={800} height={600} priority={priority} fetchPriority={priority ? "high" : "auto"} sizes="(min-width: 900px) 380px, 90vw" />
         <span className="badge badge-over b-free">{eventTypeLabel[e.pricing]}</span>
       </div>
       <div className="body">

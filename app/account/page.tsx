@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { getMyBookings, getMyCredits } from "@/lib/account-queries";
 import { isUsableCredit } from "@/lib/booking-rules";
+import { packsEnabled } from "@/lib/features";
 import { safeDb } from "@/lib/safe";
 import { requireUser } from "@/lib/session";
 
@@ -37,7 +38,7 @@ export default async function AccountPage() {
       <div className="stat">
         <span className="big-num">{one}</span>
         <p>1:1 credits</p>
-        <Link href="/classes#packs">Buy a pack</Link>
+        {packsEnabled() && <Link href="/classes#packs">Buy a pack</Link>}
       </div>
     </div>
   );

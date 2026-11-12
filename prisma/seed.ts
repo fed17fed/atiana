@@ -2,12 +2,14 @@
 // Run: npx prisma db seed      (uses DIRECT_URL, else DATABASE_URL, from .env)
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { assertSeedTarget } from "../lib/assert-local-db";
 import { PrismaClient } from "../lib/generated/prisma/client";
 import { assertSeedUsersSafe, seedUsers } from "./seed-data";
 
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) throw new Error("DIRECT_URL or DATABASE_URL is not set");
+  assertSeedTarget(url);
   assertSeedUsersSafe(seedUsers);
 
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });

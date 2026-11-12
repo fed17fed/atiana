@@ -3,8 +3,10 @@
 // A second run on the same day reports 0 changes. Later runs only add new future weeks.
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { DEMO_ZOOM_URL, SINGLE_CLASS_PRICE_CENTS, classTypes, oneToOneOfferings, oneToOnePacks, packs } from "../content/catalog";
+import { longTextToMarkdown } from "../content/session-texts";
+import { DEMO_ZOOM_URL, HIDDEN_DEMO_CLASS_SLUGS, classTypes, oneToOneOfferings, oneToOnePacks, packs } from "../content/catalog";
 import { planGroupSessions, planOneToOneSlots } from "../lib/demo-schedule";
+import { assertSeedTarget } from "../lib/assert-local-db";
 import { PrismaClient } from "../lib/generated/prisma/client";
 
 type Counts = { created: number; updated: number; unchanged: number };
@@ -13,6 +15,7 @@ const newCounts = (): Counts => ({ created: 0, updated: 0, unchanged: 0 });
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) throw new Error("DIRECT_URL or DATABASE_URL is not set");
+  assertSeedTarget(url); // local database only (ALLOW_REMOTE_DB_SEED=true only with the owner's OK, task 11.14)
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   console.log(`Seeding database host: ${new URL(url).hostname}`);
   const now = new Date();
@@ -21,6 +24,7 @@ async function main() {
   const prices = newCounts();
   const packCounts = newCounts();
   const sessions = newCounts();
+  let hidden = 0;
 
   try {
     const offeringIds = new Map<string, string>();
@@ -31,11 +35,11 @@ async function main() {
         type: "GROUP_CLASS" as const,
         title: c.title,
         summary: `${c.level} · ${c.minutes} minutes · Online (Zoom)`,
-        body: c.text,
+        body: longTextToMarkdown(c.long),
         mode: "ONLINE" as const,
         location: null as string | null,
         priceName: "Single class",
-        priceCents: SINGLE_CLASS_PRICE_CENTS,
+        priceCents: c.priceCents,
       })),
       ...oneToOneOfferings.map((o) => ({
         slug: o.slug,
@@ -83,6 +87,13 @@ async function main() {
         prices.updated++;
       } else prices.unchanged++;
     }
+
+    // The 4 first demo classes are hidden, never deleted (their sessions and bookings stay in the database).
+    const hide = await prisma.offering.updateMany({
+      where: { slug: { in: [...HIDDEN_DEMO_CLASS_SLUGS] }, published: true },
+      data: { published: false },
+    });
+    hidden = hide.count;
 
     for (const p of [
       ...packs.map((x) => ({ ...x, appliesTo: "GROUP_CLASS" as const })),
@@ -143,6 +154,7 @@ async function main() {
     console.log(fmt("Price options", prices));
     console.log(fmt("Packages", packCounts));
     console.log(fmt("Sessions", sessions));
+    console.log(`Old demo classes hidden now: ${hidden}`);
   } finally {
     await prisma.$disconnect();
   }

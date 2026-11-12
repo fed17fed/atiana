@@ -1,14 +1,15 @@
 /**
  * Daily job (Vercel Hobby allows a cron only once a day):
- *  1. release unpaid holds, 2. expire credits, 3. send reminders for classes in the next 24 hours.
+ *  1. release unpaid holds, 2. expire credits, 3. send reminders for classes in the next REMINDER_HOURS hours.
  * Every step is safe to repeat: holds and credits are handled by status checks, reminders by reminderSentAt.
  */
 import type { PrismaClient } from "./generated/prisma/client";
+import { REMINDER_HOURS } from "./booking-rules";
 import { expireCredits, releaseUnpaidHolds } from "./booking-service";
 import { mailConfig, sendMail } from "./mail";
 import { buildBookingMail } from "./notifications";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = REMINDER_HOURS * 60 * 60 * 1000; // reminder window, see lib/booking-rules.ts
 
 export type CronSummary = {
   holdsReleased: number;

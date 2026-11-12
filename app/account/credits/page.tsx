@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
 import { getMyCredits } from "@/lib/account-queries";
+import { packsEnabled } from "@/lib/features";
 import { safeDb } from "@/lib/safe";
 import { requireUser } from "@/lib/session";
 import { formatDate } from "@/lib/time";
@@ -33,10 +34,16 @@ export default async function CreditsPage({ searchParams }: PageProps<"/account/
       {grants.length === 0 ? (
         <div className="empty">
           <h2>No credits yet</h2>
-          <p>A class pack gives you credits. One credit books one class.</p>
-          <Link className="btn btn-primary" href="/classes#packs">
-            See class packs
-          </Link>
+          {packsEnabled() ? (
+            <>
+              <p>A class pack gives you credits. One credit books one class.</p>
+              <Link className="btn btn-primary" href="/classes#packs">
+                See class packs
+              </Link>
+            </>
+          ) : (
+            <p>You have no credits at the moment. One credit books one class.</p>
+          )}
         </div>
       ) : (
         <ul className="acc-list">

@@ -4,6 +4,7 @@ import { Crumbs } from "@/components/ui/Crumbs";
 import { Suspense } from "react";
 import { PackBuyForm } from "@/components/booking/PackBuyForm";
 import { oneToOneOfferings, oneToOnePacks } from "@/content/catalog";
+import { packsEnabled } from "@/lib/features";
 import { getActivePackages } from "@/lib/catalog-queries";
 import { safeDb } from "@/lib/safe";
 import { CANCELLATION_HOURS } from "@/lib/booking-rules";
@@ -75,8 +76,10 @@ export default function OneToOnePage() {
         </div>
       </section>
 
-      <section className="sec sand" aria-labelledby="pack-h">
+      <section className="sec sand" aria-label="Good to know">
         <div className="wrap prose-narrow">
+          {packsEnabled() && (
+            <>
           <h2 id="pack-h">5-session package</h2>
           <p>
             Five sessions at a better price. Use your credits at any time while they are valid. Package price:{" "}
@@ -86,6 +89,8 @@ export default function OneToOnePage() {
           <Suspense fallback={<PackBuyForm packageId={null} name={oneToOnePacks[0].name} disabled />}>
             <PackFromDb />
           </Suspense>
+            </>
+          )}
           <h2>Good to know</h2>
           <ul style={{ display: "grid", gap: 8, listStyle: "disc", paddingLeft: "1.3em" }}>
             <li>

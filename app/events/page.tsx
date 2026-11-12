@@ -104,8 +104,8 @@ async function EventList({ searchParams }: { searchParams: PageProps<"/events">[
         </div>
       ) : (
         <div className="ev-grid">
-          {cards.map((c) => (
-            <EventCard key={c.slug} e={c} />
+          {cards.map((c, i) => (
+            <EventCard key={c.slug} e={c} priority={i === 0} />
           ))}
         </div>
       )}

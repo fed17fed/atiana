@@ -7,24 +7,32 @@ const now = new Date("2026-11-09T12:00:00Z"); // Monday
 describe("demo group sessions", () => {
   const plan = planGroupSessions(now);
   it("4 sessions per week for 8 weeks", () => expect(plan).toHaveLength(32));
-  it("only Tuesday 18:00, Thursday 12:30, Friday 07:30 and Sunday 19:30 (Dublin time)", () => {
+  it("only Tuesday 12:00, Wednesday 18:30, Thursday 12:00 and Sunday 19:30 (Dublin time)", () => {
     const seen = new Set(plan.map((s) => `${zonedParts(s.startsAt).weekday} ${formatTime(s.startsAt)} ${s.offeringSlug}`));
     expect([...seen].sort()).toEqual(
-      ["4 12:30 breath-and-stillness", "0 19:30 evening-transmission", "2 18:00 beginners-introduction", "5 07:30 morning-energy-class"].sort(),
+      ["2 12:00 blitz-for-bliss", "3 18:30 dive-deep", "4 12:00 gratitude", "0 19:30 kundalini-energy-activation"].sort(),
     );
   });
   it("keeps the local time through the clock change in March", () => {
     const spring = planGroupSessions(new Date("2027-03-20T12:00:00Z"), 3);
-    expect(spring.filter((s) => s.offeringSlug === "morning-energy-class").every((s) => formatTime(s.startsAt) === "07:30")).toBe(true);
+    expect(spring.filter((s) => s.offeringSlug === "dive-deep").every((s) => formatTime(s.startsAt) === "18:30")).toBe(true);
   });
   it("sorted, all in the future, no duplicates", () => {
     expect(plan.every((s, i) => i === 0 || plan[i - 1].startsAt <= s.startsAt)).toBe(true);
     expect(plan.every((s) => s.startsAt > now)).toBe(true);
     expect(new Set(plan.map((s) => `${s.offeringSlug}${s.startsAt.toISOString()}`)).size).toBe(plan.length);
   });
-  it("the first session is Tuesday 10 November 18:00", () => {
+  it("the first session is Tuesday 10 November 12:00", () => {
     expect(dayKey(plan[0].startsAt)).toBe("2026-11-10");
-    expect(plan[0].startsAt.toISOString()).toBe("2026-11-10T18:00:00.000Z");
+    expect(plan[0].startsAt.toISOString()).toBe("2026-11-10T12:00:00.000Z");
+  });
+  it("capacity is 12 and the lengths are 30 / 90 / 30 / 60 minutes", () => {
+    expect(plan.every((s) => s.capacity === 12)).toBe(true);
+    const len = (slug: string) => plan.filter((s) => s.offeringSlug === slug).map((s) => (s.endsAt.getTime() - s.startsAt.getTime()) / 60000);
+    expect(new Set(len("blitz-for-bliss"))).toEqual(new Set([30]));
+    expect(new Set(len("dive-deep"))).toEqual(new Set([90]));
+    expect(new Set(len("gratitude"))).toEqual(new Set([30]));
+    expect(new Set(len("kundalini-energy-activation"))).toEqual(new Set([60]));
   });
   it("past sessions of the current week are skipped", () => {
     const sat = planGroupSessions(new Date("2026-11-14T12:00:00Z"), 1);

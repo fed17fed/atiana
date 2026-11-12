@@ -3,6 +3,9 @@
  * Demo rules decided by the owner on 2026-11-09:
  *  - cancel 24 hours or more before the start: the credit is returned
  *  - cancel less than 24 hours before the start: no return
+ * Phase 11 (owner answers 2026-11-12): events refund 7 days before; default capacity 12;
+ * no late join: booking and joining close at the start time.
+ * EVERY rule number lives in this file. Pages, emails and the booking engine read it; never write "24" or "7 days" in code.
  */
 import type { OfferingType } from "./generated/prisma/enums";
 
@@ -11,6 +14,21 @@ export const CANCELLATION_HOURS = 24;
 
 /** Paid events: money back when the client cancels this many days (or more) before the start. Owner rule 2026-11-09. */
 export const EVENT_REFUND_DAYS = 7;
+
+/** Clients are asked to join this many minutes before the start (text only; the door still closes at the start). */
+export const JOIN_EARLY_MINUTES = 5;
+
+/** The daily cron sends a reminder for sessions that start within this many hours. */
+export const REMINDER_HOURS = 24;
+
+/** Default number of seats for a new group class or event session. */
+export const DEFAULT_CAPACITY = 12;
+
+/**
+ * No late join (owner decision 2026-11-12): booking and joining close at the start time.
+ * Nobody can book, register or join once the session has started.
+ */
+export const BOOKING_CLOSES_AT_START = true;
 
 /** Stripe cannot charge less than EUR 0.50. Donations above 0 but below this cannot go through Stripe. */
 export const MIN_CARD_PAYMENT_CENTS = 50;
@@ -55,6 +73,38 @@ export function parseEuroToCents(input: string): number | null {
   const t = input.trim().replace(",", ".");
   if (!/^\d{1,6}(\.\d{1,2})?$/.test(t)) return null;
   return Math.round(Number.parseFloat(t) * 100);
+}
+
+/** True while booking is still open. With no late join (BOOKING_CLOSES_AT_START) it closes exactly at the start. */
+export function isBookingOpen(startsAt: Date, now: Date): boolean {
+  return BOOKING_CLOSES_AT_START ? startsAt.getTime() > now.getTime() : true;
+}
+
+/** A price of 0 cents means a free class: login needed, but no Stripe and no credit. */
+export function isFreePrice(amountCents: number | null | undefined): boolean {
+  return amountCents === 0;
+}
+
+/** Price text for pages: 0 -> "Free", otherwise euros (EUR 15 -> "€15"). */
+export function priceText(amountCents: number | null | undefined): string {
+  if (amountCents === null || amountCents === undefined) return "–";
+  if (amountCents === 0) return "Free";
+  const value = amountCents / 100;
+  return new Intl.NumberFormat("en-IE", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: Number.isInteger(value) ? 0 : 2,
+  }).format(value);
+}
+
+/** Short sentence for pages and emails: "Cancel up to 24 hours before." */
+export function cancelUpToText(): string {
+  return `Cancel up to ${CANCELLATION_HOURS} hours before`;
+}
+
+/** Cancel rule for a page header or FAQ: paid classes use the deadline, free classes can be cancelled until the start. */
+export function cancelRuleSentence(): string {
+  return `Paid classes: cancel up to ${CANCELLATION_HOURS} hours before. Free classes: cancel any time before the start.`;
 }
 
 /** A class that already started (or ended) cannot be cancelled online. */

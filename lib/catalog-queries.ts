@@ -1,6 +1,7 @@
 /** Read queries for the public pages (classes, schedule, 1:1). */
 import type { Prisma, PrismaClient } from "./generated/prisma/client";
 import type { Mode } from "./generated/prisma/enums";
+import { classTypes } from "@/content/catalog";
 import { holdCutoff, spotsLeft } from "./booking-rules";
 import { weekRange } from "./time";
 
@@ -16,6 +17,8 @@ export type ScheduleItem = {
   priceCents: number | null;
   capacity: number;
   spotsLeft: number;
+  /** Greeting first: minutes between the start and the main activation (null = no greeting) */
+  activationAfterMinutes: number | null;
 };
 
 /**
@@ -47,6 +50,7 @@ function toItem(s: {
     priceCents: s.offering.priceOptions[0]?.amountCents ?? null,
     capacity: s.capacity,
     spotsLeft: spotsLeft(s.capacity, s._count.bookings),
+    activationAfterMinutes: classTypes.find((c) => c.slug === s.offering.slug)?.activationAfterMinutes ?? null,
   };
 }
 

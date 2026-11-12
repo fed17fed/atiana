@@ -14,6 +14,8 @@ import {
   canCancel,
   creditExpiry,
   holdCutoff,
+  isBookingOpen,
+  isFreePrice,
   isRefundable,
   pickCreditGrant,
   spotsLeft,
@@ -29,13 +31,15 @@ export type BookingErrorCode =
   | "NO_CREDIT"
   | "NO_PRICE"
   | "DISCLAIMER"
-  | "TYPE_MISMATCH";
+  | "TYPE_MISMATCH"
+  | "NOT_FREE"; // method FREE was used for a class that has a price
 
 export type CreateBookingResult =
   | {
       ok: true;
       bookingId: string;
       status: "CONFIRMED" | "PENDING";
+      paidWith: "STRIPE" | "CREDIT" | "FREE";
       orderId: string | null;
       amountCents: number;
       description: string;
@@ -46,8 +50,12 @@ export type CreateBookingResult =
 export type CreateBookingInput = {
   userId: string;
   sessionId: string;
-  /** CREDIT = book now with a credit. STRIPE = keep a seat (PENDING) and create an unpaid order. */
-  method: "CREDIT" | "STRIPE";
+  /**
+   * CREDIT = book now with a credit. STRIPE = keep a seat (PENDING) and create an unpaid order.
+   * FREE = free class (price 0). A free class is ALWAYS booked as FREE, whatever the method is:
+   * no Stripe, no order, no credit used. FREE on a class that has a price is refused (NOT_FREE).
+   */
+  method: "CREDIT" | "STRIPE" | "FREE";
   disclaimerAccepted: boolean;
   /** Only allow this offering type (group page vs 1:1 page). */
   expectType?: OfferingType;
@@ -90,7 +98,8 @@ export async function createBooking(db: PrismaClient, input: CreateBookingInput)
       if (input.expectType && session.offering.type !== input.expectType) {
         return { ok: false, code: "TYPE_MISMATCH" };
       }
-      if (session.startsAt.getTime() <= now.getTime()) return { ok: false, code: "PAST" };
+      // No late join: booking closes at the start time (lib/booking-rules.ts).
+      if (!isBookingOpen(session.startsAt, now)) return { ok: false, code: "PAST" };
 
       await releaseExpiredHoldsForSession(tx, session.id, now);
 
@@ -107,6 +116,34 @@ export async function createBooking(db: PrismaClient, input: CreateBookingInput)
 
       const keys = bookingKeys({ sessionId: session.id, userId: input.userId, capacity: session.capacity });
       const description = `${session.offering.title}`;
+
+      const price = session.offering.priceOptions[0];
+      const free = !!price && isFreePrice(price.amountCents);
+      if (input.method === "FREE" && !free) return { ok: false, code: "NOT_FREE" };
+
+      if (free) {
+        // Free class: same seat rule, same locks and unique keys as a paid booking. No order, no Stripe, no credit.
+        const booking = await tx.booking.create({
+          data: {
+            userId: input.userId,
+            sessionId: session.id,
+            status: "CONFIRMED",
+            paidWith: "FREE",
+            disclaimerAcceptedAt: now,
+            ...keys,
+          },
+        });
+        return {
+          ok: true,
+          bookingId: booking.id,
+          status: "CONFIRMED",
+          paidWith: "FREE",
+          orderId: null,
+          amountCents: 0,
+          description,
+          sessionId: session.id,
+        };
+      }
 
       if (input.method === "CREDIT") {
         const grants = await tx.creditGrant.findMany({
@@ -135,6 +172,7 @@ export async function createBooking(db: PrismaClient, input: CreateBookingInput)
           ok: true,
           bookingId: booking.id,
           status: "CONFIRMED",
+          paidWith: "CREDIT",
           orderId: null,
           amountCents: 0,
           description,
@@ -142,7 +180,6 @@ export async function createBooking(db: PrismaClient, input: CreateBookingInput)
         };
       }
 
-      const price = session.offering.priceOptions[0];
       if (!price) return { ok: false, code: "NO_PRICE" };
       const user = await tx.user.findUniqueOrThrow({ where: { id: input.userId }, select: { email: true } });
       const itemType = session.offering.type === "ONE_TO_ONE" ? "ONE_TO_ONE" : "CLASS";
@@ -183,6 +220,7 @@ export async function createBooking(db: PrismaClient, input: CreateBookingInput)
         ok: true,
         bookingId: booking.id,
         status: "PENDING",
+        paidWith: "STRIPE",
         orderId: order.id,
         amountCents: price.amountCents,
         description,

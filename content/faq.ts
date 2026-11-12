@@ -3,8 +3,23 @@
  * Demo values are shown as "(demo price)" / "(demo value)". [OWNER: ...] notes stay visible
  * where the text gives no demo value.
  */
-export type FaqItem = { q: string; a: string };
-export type FaqGroup = { id: string; title: string; items: FaqItem[] };
+import { CANCELLATION_HOURS } from "@/lib/booking-rules";
+
+export type FaqItem = {
+  q: string;
+  a: string;
+  /** Shown only when packs are on (lib/features.ts). */
+  packOnly?: boolean;
+  /** Added to the answer only when "Refer a friend" is on (lib/features.ts). */
+  referralNote?: string;
+};
+export type FaqGroup = {
+  id: string;
+  title: string;
+  /** Title used while packs are hidden (so the page never says "packs") */
+  titleWithoutPacks?: string;
+  items: FaqItem[];
+};
 
 export const faqGroups: FaqGroup[] = [
   {
@@ -13,37 +28,41 @@ export const faqGroups: FaqGroup[] = [
     items: [
       {
         q: "Do I need experience?",
-        a: "No. All classes welcome beginners. If you are new, start with the Beginners' Introduction.",
+        a: "No. All sessions welcome beginners. You only need to lie down, listen to the music and allow what arises.",
       },
       {
         q: "What do I need for a class?",
-        a: "A device with Zoom, a quiet place, a chair or a mat, and comfortable clothes. Headphones can help.",
+        a: "A device with Zoom, a quiet place, a yoga mat or comfy rug to lie on, and comfortable clothes. Wireless headphones or a speaker give good sound. Please keep your camera on.",
       },
       {
-        q: "Do I have to turn my camera on?",
-        a: "No. Camera on or off is your choice. The teacher will still guide you clearly.",
+        q: "Do I need my camera on?",
+        a: "Yes. Please keep your camera on and lie down so that your full body is visible from the side, from head to toes. The teacher watches each person during the session. We do not record sessions.",
       },
       {
         q: "When do I get the Zoom link?",
-        a: "We send it by email right after you book. We also send a reminder 24 hours before the class.",
+        a: `We send it by email right after you book. We also send a reminder ${CANCELLATION_HOURS} hours before the class.`,
       },
     ],
   },
   {
-    id: "packs-credits",
+    id: "credits",
     title: "Packs & credits",
+    titleWithoutPacks: "Credits",
     items: [
       {
+        packOnly: true,
         q: "What is a class pack?",
         a: "A pack gives you several credits at a lower price. One credit books one group class. A 5-pack is €60 and a 10-pack is €105 (demo price).",
       },
       {
+        packOnly: true,
         q: "How long do credits last?",
         a: 'Credits from a 5-pack are valid for 10 weeks. Credits from a 10-pack are valid for 16 weeks. You can see the date in "My credits". (demo values)',
       },
       {
         q: "Can I share my credits with a friend?",
-        a: "No. Credits belong to your account. You can invite a friend with your link and earn a free credit.",
+        a: "No. Credits belong to your account.",
+        referralNote: "You can invite a friend with your link and earn a free credit.",
       },
     ],
   },
@@ -53,10 +72,10 @@ export const faqGroups: FaqGroup[] = [
     items: [
       {
         q: "Can I cancel a class?",
-        a: 'Yes. Cancel up to 24 hours before the class and you get your credit back. If you paid by card, you also get a credit. [OWNER: confirm "credit back" also for single paid classes]',
+        a: `Yes. Cancel up to ${CANCELLATION_HOURS} hours before the class and you get your credit back. If you paid by card, you also get a credit. A free class can be cancelled any time before it starts. [OWNER: confirm "credit back" also for single paid classes]`,
       },
       {
-        q: "What if I miss the 24-hour limit or do not show up?",
+        q: `What if I miss the ${CANCELLATION_HOURS}-hour limit or do not show up?`,
         a: "The credit is used and we cannot refund it. If you had a real problem, write to us and we will try to help.",
       },
       {
@@ -75,7 +94,7 @@ export const faqGroups: FaqGroup[] = [
       },
       {
         q: "Can I move my 1:1 session?",
-        a: 'Yes, up to 24 hours before. Use "My bookings" or write to us.',
+        a: `Yes, up to ${CANCELLATION_HOURS} hours before. Use "My bookings" or write to us.`,
       },
     ],
   },
@@ -96,6 +115,19 @@ export const faqGroups: FaqGroup[] = [
 ];
 
 /** Text for search engines: no [OWNER: ...] notes and no "(demo ...)" tags. */
+/** FAQ groups for the page: pack questions and referral sentences are left out while packs / referral are hidden. */
+export function visibleFaqGroups(showPacks: boolean, showReferral = false): FaqGroup[] {
+  return faqGroups
+    .map((g) => ({
+      id: g.id,
+      title: showPacks ? g.title : (g.titleWithoutPacks ?? g.title),
+      items: g.items
+        .filter((i) => showPacks || !i.packOnly)
+        .map((i) => ({ q: i.q, a: showReferral && i.referralNote ? `${i.a} ${i.referralNote}` : i.a })),
+    }))
+    .filter((g) => g.items.length > 0);
+}
+
 export function plainText(answer: string): string {
   return answer
     .replace(/\[OWNER:[^\]]*\]/g, "")

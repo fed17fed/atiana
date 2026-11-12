@@ -1,15 +1,20 @@
 /**
- * Helpers for tests that talk to the Neon DEV database (never main). They only run with RUN_DB_TESTS=true
+ * Helpers for tests that talk to a LOCAL test database (localhost only, enforced by assertLocalDb; never Neon). They only run with RUN_DB_TESTS=true
  * (npm run test:db). Rule: nothing is deleted. Test data uses fixed users and one hidden offering;
  * sessions are cancelled (updated) after the run.
  */
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@/lib/generated/prisma/client";
+import { assertLocalDb } from "@/lib/assert-local-db";
 
 export const dbTestsOn = process.env.RUN_DB_TESTS === "true" && !!process.env.DATABASE_URL;
 
+// Safety guard: DB tests run ONLY on a local database. Throws before any query (also when this file is imported).
+if (dbTestsOn) assertLocalDb(process.env.DATABASE_URL, "the DB tests");
+
 export async function getDb(): Promise<PrismaClient> {
+  assertLocalDb(process.env.DATABASE_URL, "the DB tests");
   const { getPrisma } = await import("@/lib/prisma");
   return getPrisma();
 }
@@ -37,6 +42,20 @@ export async function testOffering(db: PrismaClient, kind: "GROUP_CLASS" | "ONE_
   const o = await db.offering.update({ where: { slug }, data: { published: true } });
   const price = await db.priceOption.findFirst({ where: { offeringId: o.id } });
   if (!price) await db.priceOption.create({ data: { offeringId: o.id, name: "Test price", amountCents: 1500 } });
+  return o;
+}
+
+/** Hidden FREE class (price option with 0 cents) for tests of free booking (task 11.6). */
+export async function testFreeClassOffering(db: PrismaClient) {
+  const slug = "zz-dbtest-class-free";
+  await db.offering.createMany({
+    data: [{ slug, type: "GROUP_CLASS", title: "ZZ DB test free class", published: true, mode: "ONLINE" }],
+    skipDuplicates: true,
+  });
+  const o = await db.offering.update({ where: { slug }, data: { published: true } });
+  const price = await db.priceOption.findFirst({ where: { offeringId: o.id } });
+  if (!price) await db.priceOption.create({ data: { offeringId: o.id, name: "Free", amountCents: 0 } });
+  else if (price.amountCents !== 0) await db.priceOption.update({ where: { id: price.id }, data: { amountCents: 0 } });
   return o;
 }
 
