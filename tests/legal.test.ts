@@ -10,15 +10,19 @@ describe("legal loader", () => {
       expect(doc, slug).not.toBeNull();
       expect(doc!.title.length).toBeGreaterThan(3);
       expect(doc!.updated).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-      expect(doc!.draftNotice).toMatch(/^DRAFT/);
+      expect(doc!.draftNotice).toBe(""); // lawyer approved all 5 pages (owner, 2026-11-19)
       expect(doc!.body.startsWith("# ")).toBe(true);
       expect(doc!.body).not.toContain("---\ntitle");
     }
   });
 
-  it("keeps [OWNER]/[LAWYER] placeholders visible", async () => {
+  it("no [LAWYER] notes and no DRAFT label left; [OWNER] company details stay visible until go-live", async () => {
+    for (const slug of legalSlugs) {
+      const doc = await loadLegalDoc(slug);
+      expect(doc!.body, slug).not.toMatch(/LAWYER|DRAFT/);
+    }
     const privacy = await loadLegalDoc("privacy");
-    expect(privacy!.body).toMatch(/\[(OWNER|LAWYER)/);
+    expect(privacy!.body).toMatch(/\[OWNER/);
   });
 
   it("every footer legal link has a page", () => {

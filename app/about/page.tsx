@@ -37,10 +37,10 @@ export default function AboutPage() {
           </div>
           <div className="photo-rounded">
             <Image
-              src="/demo/yoga-studio-windows.webp"
-              alt="A bright yoga studio with large windows and natural light"
-              width={1200}
-              height={800}
+              src="/real/about-hero-01.webp"
+              alt="A thin crescent moon above a still, frozen sea at sunset"
+              width={1136}
+              height={757}
               priority
               sizes="(min-width: 860px) 480px, 90vw"
             />

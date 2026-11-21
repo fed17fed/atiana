@@ -42,11 +42,11 @@ const NEW_MOON_SUMMARY =
 const FULL_MOON_SUMMARY =
   "An online Full Moon Kundalini Energy Activation with Atiana: 30 minutes of energy transmission under the full moon. Lie down at home.";
 
-// Demo pictures stay for now (real moon pictures wait for Tatiana's OK on the rights, plan 13.8 Q7).
-const IMG_FULL = { image: "/demo/singing-bowl-sage.webp", imageAlt: "A singing bowl and sage on a table (stock photo, demo)" };
-const IMG_NEW = { image: "/demo/online-yoga-laptop.webp", imageAlt: "Woman doing breathing practice in front of a laptop (stock photo, demo)" };
-const IMG_ECLIPSE = { image: "/demo/group-circle-room.webp", imageAlt: "A group sitting in a circle in a bright room (stock photo, demo)" };
-const IMG_SOLSTICE = { image: "/demo/terrace-meditation.webp", imageAlt: "Person meditating on a wooden terrace (stock photo, demo)" };
+// Tatiana's own pictures (owner 2026-11-19: all photos are Tatiana's property). Cropped: no old titles or dates.
+const IMG_FULL = { image: "/real/event-full-moon-01.webp", imageAlt: "Full moon seen between tall bare trees at night" };
+const IMG_NEW = { image: "/real/event-new-moon-01.webp", imageAlt: "A glowing crescent moon over clouds with stars" };
+const IMG_ECLIPSE = { image: "/real/event-lunar-eclipse-01.webp", imageAlt: "A path of violet light along a frozen river between snowy mountains" };
+const IMG_SOLSTICE = { image: "/real/event-winter-solstice-01.webp", imageAlt: "A thin crescent moon and a low sun above a still, frozen sea" };
 
 const moon = (
   kind: "new" | "full",

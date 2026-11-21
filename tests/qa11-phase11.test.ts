@@ -156,9 +156,13 @@ describe("QA11 no leaks, no old demo teacher, packs hidden, only real photos 01 
       expect(t, f).toMatch(/packsEnabled/);
     }
   });
-  it("pictures: only photos 01 and 11 are in public/real; no code uses 02/05/06/16/18/19 or images-eventbrite", () => {
-    expect(readdirSync(join(root, "public/real")).sort()).toEqual(["hero-home-01.webp", "og-share-01.webp", "teacher-home-01.webp"]);
-    for (const x of sourceText) expect(x.t, x.f).not.toMatch(/images-eventbrite|atiana-eventbrite-(02|05|06|16|18|19)/);
+  it("pictures: only the approved real photos are in public/real (owner 2026-11-19); 05 and 18 never; no code uses images-eventbrite", () => {
+    expect(readdirSync(join(root, "public/real")).sort()).toEqual([
+      "about-hero-01.webp", "card-events-01.webp", "card-one-to-one-01.webp",
+      "event-full-moon-01.webp", "event-lunar-eclipse-01.webp", "event-new-moon-01.webp", "event-winter-solstice-01.webp",
+      "hero-home-01.webp", "og-share-01.webp", "teacher-home-01.webp",
+    ]);
+    for (const x of sourceText) expect(x.t, x.f).not.toMatch(/images-eventbrite|atiana-eventbrite-/);
   });
   it("old demo classes and events are only on the hide lists, not in the pages' data", () => {
     const slugs = [...classTypes.map((c) => c.slug), ...events.map((e) => e.slug)];

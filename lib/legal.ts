@@ -44,7 +44,7 @@ export function parseFrontmatter(source: string): { data: Record<string, string>
 /** Splits the leading "**DRAFT – ...**" line from the body. */
 export function splitDraftNotice(content: string): { notice: string; body: string } {
   const m = /^\s*\*\*(DRAFT[^*]*)\*\*\s*\r?\n/.exec(content);
-  if (!m) return { notice: "DRAFT – must be checked by a lawyer before go-live.", body: content };
+  if (!m) return { notice: "", body: content.replace(/^\s+/, "") }; // no notice: text checked by a lawyer (2026-11-19)
   return { notice: m[1].trim(), body: content.slice(m[0].length).replace(/^\s+/, "") };
 }
 

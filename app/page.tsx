@@ -196,10 +196,10 @@ export default function Home() {
                   Online or in person
                 </span>
                 <Image
-                  src="/demo/singing-bowl-sage.webp"
-                  alt="A singing bowl with sage and crystals"
-                  width={800}
-                  height={600}
+                  src="/real/card-one-to-one-01.webp"
+                  alt="A bundle of burning incense sticks in front of a wooden house"
+                  width={480}
+                  height={360}
                   sizes="(min-width: 900px) 380px, 90vw"
                 />
               </div>
@@ -222,10 +222,10 @@ export default function Home() {
               <div className="media">
                 <span className="badge badge-over b-free">Events</span>
                 <Image
-                  src="/demo/group-circle-room.webp"
-                  alt="A group of people sitting in a circle in a bright room"
-                  width={800}
-                  height={600}
+                  src="/real/card-events-01.webp"
+                  alt="Full moon seen between tall bare trees at night"
+                  width={747}
+                  height={560}
                   sizes="(min-width: 900px) 380px, 90vw"
                 />
               </div>

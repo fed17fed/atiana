@@ -15,31 +15,31 @@ export async function legalMetadata(slug: LegalSlug): Promise<Metadata> {
   const doc = await getLegalDoc(slug);
   if (!doc) return { title: "Page not found" };
   return {
-    title: `${doc.title} (draft)`,
-    description: `${doc.title} of KEA by Atiana. Draft text, to be checked by a lawyer before go-live.`,
+    title: doc.title,
+    description: `${doc.title} of KEA by Atiana.`,
     alternates: { canonical: `/legal/${doc.slug}` },
     openGraph: { title: `${doc.title} – KEA by Atiana`, url: `/legal/${doc.slug}` },
   };
 }
 
-/** Renders one legal page from content/legal/<slug>.mdx with the DRAFT banner. */
+/** Renders one legal page from content/legal/<slug>.mdx. Text checked by a lawyer (owner, 2026-11-19); a note is shown only while [OWNER] details are missing. */
 export async function LegalDocument({ slug }: { slug: LegalSlug }) {
   const doc = await getLegalDoc(slug);
   if (!doc) notFound();
+  const ownerDetailsMissing = /\[(OWNER|COMPANY|ADDRESS|CRO|CONTACT|DEV)/.test(doc.body);
 
   return (
     <article className="sec legal">
       <div className="prose-narrow">
-        <div className="alert a-warn" role="note">
-          <Icon name="warn" />
-          <div>
-            <b>{doc.draftNotice}</b>
-            <p>
-              This text is a draft for the demo site. Parts in [OWNER: ...] or [LAWYER: ...] are
-              still open.
-            </p>
+        {(doc.draftNotice || ownerDetailsMissing) && (
+          <div className="alert a-warn" role="note">
+            <Icon name="warn" />
+            <div>
+              {doc.draftNotice && <b>{doc.draftNotice}</b>}
+              {ownerDetailsMissing && <p>Some details in [BRACKETS] (company data) will be added before go-live.</p>}
+            </div>
           </div>
-        </div>
+        )}
 
         <Markdown
           remarkPlugins={[remarkGfm]}
