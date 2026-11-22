@@ -73,6 +73,14 @@ export async function testEventOffering(db: PrismaClient, pricing: "FREE" | "DON
   return o;
 }
 
+/**
+ * A start time that never clashes: unique key is (offeringId, startsAt), so a random start must come from a BIG range
+ * (3e8 seconds ~ 9.5 years = 300 million values), never from a small one (A12-2: 1180 values clashed in 5 % of runs).
+ */
+export function uniqueStart(): Date {
+  return new Date(Date.UTC(2043, 0, 1) + Math.floor(Math.random() * 3e8) * 1000 + Math.floor(Math.random() * 1000));
+}
+
 /** A new far-future session (year 2040) with a random start so runs never collide. */
 export async function newSession(db: PrismaClient, offeringId: string, capacity: number, startsAt?: Date) {
   const start = startsAt ?? new Date(Date.UTC(2040, 0, 1) + Math.floor(Math.random() * 3e8) * 1000);

@@ -35,6 +35,31 @@ Rules:
 - Daily cron: `vercel.json` runs `/api/cron/daily` at 06:00 UTC once a day (Hobby plan allows only daily crons; check current Vercel docs). Vercel sends `Authorization: Bearer <CRON_SECRET>` itself.
 - Stripe, Resend and Turnstile keys: **keys added later** (task 0.4). No accounts created yet.
 
+### Phase 12 (admin panel): env vars needed LIVE later (names only, task 12.15; nothing set yet)
+
+Set on Vercel (Production) only at step 12.19, with the owner's OK. Preview needs the same names only if admin is tested there.
+
+| Name | What for | Who gives it | Notes |
+|---|---|---|---|
+| `AUTH_SECRET` | signs login sessions | Ops makes a random value (`openssl rand -base64 32`) | Live value must differ from the local one |
+| `AUTH_RESEND_KEY` (or `RESEND_API_KEY`) | sends the login email (magic link) | Owner: Resend account + API key | Live admin login is impossible without it |
+| `EMAIL_FROM` | sender address of the login email | Owner: a domain/address verified in Resend | |
+| `ADMIN_EMAILS` | admin-only login: emails (comma-separated, any case) that may get a login link | Owner gives the admin email(s) | Names only here, never write the real address in code, tests or docs. Empty with the flag ON = nobody can log in by email. |
+| `LOGIN_ADMIN_ONLY` | `true` = only `ADMIN_EMAILS` can log in (others see the neutral "check your email" screen and no email is sent). `false` = public login | Ops | If unset: ON in production, OFF in development. Set `false` only when the owner opens booking. Existing sessions are not ended by this flag. |
+| `AUTH_URL` / `NEXT_PUBLIC_SITE_URL` | public site address for login links | Owner decides the final domain | Check against the live domain |
+| `BLOB_READ_WRITE_TOKEN` | image upload (12.12) | Owner: creates a Vercel Blob store in the project (Vercel adds the token itself) | Free plan limits: check at that time. Decided 2026-11-21: locally images go to the git-ignored folder `.local-uploads/` (no dev store). Without the token on Vercel the upload shows "not active yet" and writes nothing. |
+| `DATABASE_URL`, `DIRECT_URL` | already set | - | Same as before (Neon main) |
+
+Never set on Vercel: `ALLOW_DEV_LOGIN`, `ALLOW_REMOTE_DB_SEED`.
+
+### set-admin script (task 12.15)
+
+- File: `app/scripts/set-admin.ts`, npm script `set-admin`. Makes one user ADMIN. Never deletes. Second run: "Already ADMIN. 0 changes."
+- Local: `scripts/with-local-db.sh dev npm run set-admin -- admin@atiana.test --create`
+- Flags: `--create` (make the user if missing), `--dry-run` (change nothing), `--allow-remote` (needed for any host that is not localhost).
+- A non-local host without `--allow-remote` stops with "STOP" (the password is never printed). Live use only at step 12.19, after a Neon backup branch and the owner's OK.
+- Local admin login: set `ALLOW_DEV_LOGIN=true` (already in `.env.atiana-local`), run set-admin for `admin@atiana.test`, then use the dev login on `/login`.
+
 ## Checks before a push
 
 ```

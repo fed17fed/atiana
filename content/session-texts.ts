@@ -2,9 +2,13 @@
  * Texts of the real sessions (Phase 11, tasks 11.1/11.7/11.8). Source: docs/real-sessions-content.md (designer draft,
  * owner said "use them" on 2026-11-12). Tatiana's words with the small fixes from that file.
  * No Zoom link, no email and no clock times in the texts: times come from the schedule on the page.
- * The rule numbers (join early, ...) come from lib/booking-rules.ts.
+ * The rule numbers (join early, ...) are written as TOKENS ({{JOIN_EARLY_MINUTES}}), never as a filled number (task 12.8, finding F-2):
+ * the database text keeps the token and the page fills it from lib/booking-rules.ts. Use `fillLongText` to show a text with the number.
  */
-import { JOIN_EARLY_MINUTES } from "@/lib/booking-rules";
+
+import { fillTokens } from "@/lib/text-tokens";
+
+const JOIN = "{{JOIN_EARLY_MINUTES}}";
 
 export type SessionLongText = {
   /** Paragraphs of the opening text */
@@ -63,8 +67,8 @@ export function buildLongText(o: Options): SessionLongText {
     join: [
       "You get the Zoom link by email after you book. It is also in My bookings.",
       doorsClose === "start"
-        ? `Please join ${JOIN_EARLY_MINUTES} minutes before the start. Doors close at the start time, and we cannot let you in later. No refund or credit for a missed session.`
-        : `Please join ${JOIN_EARLY_MINUTES} minutes before the start. Doors close when the main activation starts. The page shows the start time (greeting) and the activation time. No refund or credit for a missed session.`,
+        ? `Please join ${JOIN} minutes before the start. Doors close at the start time, and we cannot let you in later. No refund or credit for a missed session.`
+        : `Please join ${JOIN} minutes before the start. Doors close when the main activation starts. The page shows the start time (greeting) and the activation time. No refund or credit for a missed session.`,
       "Sessions are not recorded.",
     ],
   };
@@ -83,13 +87,19 @@ export function longTextToMarkdown(t: SessionLongText): string {
   ].join("\n\n");
 }
 
+/** The same text with every token filled from lib/booking-rules.ts (what a visitor reads). */
+export function fillLongText(t: SessionLongText): SessionLongText {
+  const f = (list: string[]) => list.map((x) => fillTokens(x));
+  return { opening: f(t.opening), happens: f(t.happens), needs: f(t.needs), join: f(t.join) };
+}
+
 export const TEXT_KEA = buildLongText({ allowMinutes: 60, matFor: "60 minutes" });
 
 export const TEXT_BLITZ = buildLongText({
   allowMinutes: 30,
   matFor: "30 minutes",
   lead: [
-    `This session is designed for busy souls to get 30 minutes of energy transmission. Please join the session ${JOIN_EARLY_MINUTES} minutes before, as the Kundalini energy activation starts at the start time and I won't be able to admit you once it has started.`,
+    `This session is designed for busy souls to get 30 minutes of energy transmission. Please join the session ${JOIN} minutes before, as the Kundalini energy activation starts at the start time and I won't be able to admit you once it has started.`,
   ],
 });
 
@@ -97,7 +107,7 @@ export const TEXT_GRATITUDE = buildLongText({
   allowMinutes: 30,
   matFor: "30 minutes",
   lead: [
-    `This session is designed for busy souls to get 30 minutes of energy transmission. Please join the session ${JOIN_EARLY_MINUTES} minutes before, as the Kundalini energy activation starts at the start time shown on this page, sharp, and I won't be able to admit you once it has started.`,
+    `This session is designed for busy souls to get 30 minutes of energy transmission. Please join the session ${JOIN} minutes before, as the Kundalini energy activation starts at the start time shown on this page, sharp, and I won't be able to admit you once it has started.`,
   ],
 });
 
@@ -106,7 +116,7 @@ export const TEXT_DIVE_DEEP = buildLongText({
   matFor: "90 minutes",
   doorsClose: "activation",
   lead: [
-    `This special session is designed to give you 90 minutes of energy transmission. The first 30 minutes are an introduction and greeting, which you can skip if you want. Please join the session no later than ${JOIN_EARLY_MINUTES} minutes before the activation starts, as the Kundalini energy activation starts at the activation time shown on this page, sharp, and I won't be able to admit you once it has started.`,
+    `This special session is designed to give you 90 minutes of energy transmission. The first 30 minutes are an introduction and greeting, which you can skip if you want. Please join the session no later than ${JOIN} minutes before the activation starts, as the Kundalini energy activation starts at the activation time shown on this page, sharp, and I won't be able to admit you once it has started.`,
   ],
 });
 
@@ -132,6 +142,6 @@ export const TEXT_WINTER_SOLSTICE = buildLongText({
   matFor: "75 minutes (or 60 minutes if you skip the greeting)",
   doorsClose: "activation",
   lead: [
-    `This special Winter Solstice session is designed to give you 60 minutes of energy transmission. The first 15 minutes are an introduction and greeting, which you can skip if you want. Please join the session no later than ${JOIN_EARLY_MINUTES} minutes before the activation starts, as the Kundalini energy activation starts at the activation time shown on this page, sharp, and I won't be able to admit you once it has started.`,
+    `This special Winter Solstice session is designed to give you 60 minutes of energy transmission. The first 15 minutes are an introduction and greeting, which you can skip if you want. Please join the session no later than ${JOIN} minutes before the activation starts, as the Kundalini energy activation starts at the activation time shown on this page, sharp, and I won't be able to admit you once it has started.`,
   ],
 });

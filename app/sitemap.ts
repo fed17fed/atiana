@@ -1,9 +1,12 @@
 import type { MetadataRoute } from "next";
-import { getSiteUrl, sitemapPaths } from "@/lib/site";
+import { loadPublicOfferings } from "@/lib/offerings-cache";
+import { buildSitemapPaths, getSiteUrl } from "@/lib/site";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const siteUrl = getSiteUrl();
-  return sitemapPaths.map((path) => ({
+  // Event pages: published events from the database (admin), or the code events when the database cannot be read or is empty.
+  const { events } = await loadPublicOfferings();
+  return buildSitemapPaths(events.map((e) => e.slug)).map((path) => ({
     url: path === "/" ? siteUrl : `${siteUrl}${path}`,
     changeFrequency: path.startsWith("/legal") ? "yearly" : "monthly",
     priority: path === "/" ? 1 : path.startsWith("/legal") ? 0.3 : 0.7,

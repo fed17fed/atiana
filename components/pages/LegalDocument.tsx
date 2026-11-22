@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import Markdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { LegalBody } from "@/components/pages/LegalBody";
 import { Icon } from "@/components/ui/Icon";
 import { getLegalDoc } from "@/lib/legal-cached";
 import type { LegalSlug } from "@/lib/legal";
@@ -22,7 +21,7 @@ export async function legalMetadata(slug: LegalSlug): Promise<Metadata> {
   };
 }
 
-/** Renders one legal page from content/legal/<slug>.mdx. Text checked by a lawyer (owner, 2026-11-19); a note is shown only while [OWNER] details are missing. */
+/** Renders one legal page: the published version from the database, or content/legal/<slug>.mdx (task 12.13). Text checked by a lawyer (owner, 2026-11-19); a note is shown only while [OWNER] details are missing. */
 export async function LegalDocument({ slug }: { slug: LegalSlug }) {
   const doc = await getLegalDoc(slug);
   if (!doc) notFound();
@@ -41,18 +40,7 @@ export async function LegalDocument({ slug }: { slug: LegalSlug }) {
           </div>
         )}
 
-        <Markdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            table: ({ children }) => (
-              <div className="table-wrap" tabIndex={0}>
-                <table>{children}</table>
-              </div>
-            ),
-          }}
-        >
-          {doc.body}
-        </Markdown>
+        <LegalBody body={doc.body} />
 
         {doc.updated && <p className="hint">Version date: {doc.updated}</p>}
 

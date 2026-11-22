@@ -4,33 +4,37 @@ import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { devLoginAllowed, isDevLoginEmail, LOGIN_OFF_MESSAGE, magicLinkConfig, safeNextPath } from "@/lib/auth-config";
+import { devLoginAllowed, isDevLoginEmail, isLoginAllowed, LOGIN_OFF_MESSAGE, LOGIN_SENT_PATH, magicLinkConfig, safeNextPath } from "@/lib/auth-config";
 
 export type LoginState =
   | { status: "idle" }
-  | { status: "error"; message: string }
-  | { status: "demo-off"; message: string };
+  | { status: "error"; message: string; email?: string }
+  | { status: "demo-off"; message: string; email?: string };
 
 const emailSchema = z.object({ email: z.string().trim().toLowerCase().email("Please enter a valid email, for example anna@example.com.").max(200) });
 
 /** Sends the magic link. OFF (demo message) unless the login keys are set. */
 export async function requestLoginLink(_prev: LoginState, formData: FormData): Promise<LoginState> {
-  if (!magicLinkConfig()) return { status: "demo-off", message: LOGIN_OFF_MESSAGE };
+  // The typed text is returned with an error, so the form can show it again (React clears plain fields after an action).
+  const typed = typeof formData.get("email") === "string" ? String(formData.get("email")).slice(0, 200) : "";
+  if (!magicLinkConfig()) return { status: "demo-off", message: LOGIN_OFF_MESSAGE, email: typed };
   const parsed = emailSchema.safeParse({ email: formData.get("email") });
-  if (!parsed.success) return { status: "error", message: parsed.error.issues[0].message };
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0].message, email: typed };
   const next = safeNextPath(formData.get("next"));
+  // Admin-only login: an email that is not allowed gets the SAME screen as an allowed one, but nothing is sent and no user is created.
+  if (!isLoginAllowed(parsed.data.email)) redirect(LOGIN_SENT_PATH);
   try {
     const { signIn } = await import("@/lib/auth");
     await signIn("resend", { email: parsed.data.email, redirectTo: next });
   } catch (error) {
-    // signIn ends with a redirect to "check your email"; that must go through.
-    if (error instanceof Error && "digest" in error && String((error as { digest?: unknown }).digest).startsWith("NEXT_REDIRECT")) {
-      throw error;
-    }
-    console.error("[login] could not send the link", error instanceof Error ? error.message : error);
-    return { status: "error", message: "Sorry, we could not send the link. Please try again." };
+    // Auth.js ends signIn with a redirect. A redirect to the "check your email" screen must go through.
+    const digest = error instanceof Error && "digest" in error ? String((error as { digest?: unknown }).digest) : "";
+    if (digest.startsWith("NEXT_REDIRECT") && !digest.includes("error=")) throw error;
+    // The email could not be sent (wrong key, sender refused, network). The visitor gets the SAME neutral screen as everybody else:
+    // a different message would show that this email is an admin email. The reason is only in the server log (no address, no key).
+    console.error("[login] could not send the link", digest.includes("error=") ? `Auth.js error ${(/error=([A-Za-z]+)/.exec(digest) ?? [])[1] ?? "unknown"}` : error instanceof Error ? error.message : error);
   }
-  redirect("/login?sent=1");
+  redirect(LOGIN_SENT_PATH);
 }
 
 /**

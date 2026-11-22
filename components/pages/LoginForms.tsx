@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { devLogin, requestLoginLink, type LoginState } from "@/app/login/actions";
 
@@ -21,6 +21,9 @@ function Message({ state }: { state: LoginState }) {
 
 export function LoginForm({ next }: { next: string }) {
   const [state, action, pending] = useActionState(requestLoginLink, initial);
+  // A12-10: controlled box. React clears plain fields after an action, so the typed text is kept in state (also after an error).
+  // Text typed in the first fraction of a second, before the page has finished loading, can still be lost (React takes over the box): not fixed.
+  const [email, setEmail] = useState("");
   return (
     <form action={action} noValidate className="grid gap-4.5">
       <Message state={state} />
@@ -29,7 +32,7 @@ export function LoginForm({ next }: { next: string }) {
         <label htmlFor="login-email">
           Email <span className="req" aria-hidden="true">*</span>
         </label>
-        <input id="login-email" name="email" type="email" className="input" autoComplete="email" required maxLength={200} aria-describedby="login-hint" />
+        <input id="login-email" name="email" type="email" className="input" autoComplete="email" required maxLength={200} aria-describedby="login-hint" value={email} onChange={(e) => setEmail(e.target.value)} />
         <span className="hint" id="login-hint">We send you a sign-in link. No password.</span>
       </div>
       <button className="btn btn-primary" type="submit" disabled={pending}>

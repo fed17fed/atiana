@@ -3,11 +3,12 @@ import Link from "next/link";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { Suspense } from "react";
 import { PackBuyForm } from "@/components/booking/PackBuyForm";
-import { oneToOneOfferings, oneToOnePacks } from "@/content/catalog";
+import { oneToOnePacks } from "@/content/catalog";
 import { packsEnabled } from "@/lib/features";
 import { getActivePackages } from "@/lib/catalog-queries";
 import { safeDb } from "@/lib/safe";
 import { CANCELLATION_HOURS } from "@/lib/booking-rules";
+import { loadPublicOfferings } from "@/lib/offerings-cache";
 import { formatEuro } from "@/lib/orders-service";
 
 export const metadata: Metadata = {
@@ -17,9 +18,11 @@ export const metadata: Metadata = {
   openGraph: { title: "1:1 sessions – KEA by Atiana", url: "/one-to-one" },
 };
 
-export default function OneToOnePage() {
-  const online = oneToOneOfferings.find((o) => o.mode === "ONLINE")!;
-  const person = oneToOneOfferings.find((o) => o.mode === "IN_PERSON")!;
+export default async function OneToOnePage() {
+  // Titles and texts come from the 1:1 offerings (admin), or today's code content when the database cannot be read or is empty (task 12.8, F-8).
+  const { oneToOne } = await loadPublicOfferings();
+  const online = oneToOne.find((o) => o.mode === "ONLINE");
+  const person = oneToOne.find((o) => o.mode === "IN_PERSON");
   return (
     <>
       <Crumbs items={[{ label: "1:1 Sessions" }]} />
@@ -37,41 +40,39 @@ export default function OneToOnePage() {
             Choose a format
           </h2>
           <div className="klasses">
-            <article className="klass">
-              <h3>Online 1:1 (Zoom)</h3>
-              <div className="meta">
-                <span>{online.minutes} minutes</span>
-                <span>{formatEuro(online.priceCents)} (demo price)</span>
-              </div>
-              <p>
-                Join from your own home. We talk for a few minutes about what you would like. Then we practise together,
-                step by step. You can ask anything. You get a short summary by email if you wish.
-              </p>
-              <p style={{ marginTop: 14 }}>
-                <Link className="btn btn-primary" href="/one-to-one/book?format=online">
-                  Choose a time
-                </Link>
-              </p>
-            </article>
-            <article className="klass">
-              <h3>In person 1:1</h3>
-              <div className="meta">
-                <span>{person.minutes} minutes</span>
-                <span>{formatEuro(person.priceCents)} (demo price) [OWNER: confirm in-person price]</span>
-              </div>
-              <p>
-                Meet your teacher face to face in a quiet room in Ireland. The session follows the same gentle flow as
-                online sessions. Please arrive 5 minutes early and wear comfortable clothes.
-              </p>
-              <p className="hint" style={{ marginTop: 8 }}>
-                Location: [OWNER: address and city of the in-person room]. Demo location in Ireland.
-              </p>
-              <p style={{ marginTop: 14 }}>
-                <Link className="btn btn-primary" href="/one-to-one/book?format=person">
-                  Choose a time
-                </Link>
-              </p>
-            </article>
+            {online && (
+              <article className="klass">
+                <h3>{online.title}</h3>
+                <div className="meta">
+                  <span>{online.minutes} minutes</span>
+                  <span>{formatEuro(online.priceCents)} (demo price)</span>
+                </div>
+                <p>{online.summary}</p>
+                <p style={{ marginTop: 14 }}>
+                  <Link className="btn btn-primary" href="/one-to-one/book?format=online">
+                    Choose a time
+                  </Link>
+                </p>
+              </article>
+            )}
+            {person && (
+              <article className="klass">
+                <h3>{person.title}</h3>
+                <div className="meta">
+                  <span>{person.minutes} minutes</span>
+                  <span>{formatEuro(person.priceCents)} (demo price) [OWNER: confirm in-person price]</span>
+                </div>
+                <p>{person.summary}</p>
+                <p className="hint" style={{ marginTop: 8 }}>
+                  Location: [OWNER: address and city of the in-person room]. Demo location in Ireland.
+                </p>
+                <p style={{ marginTop: 14 }}>
+                  <Link className="btn btn-primary" href="/one-to-one/book?format=person">
+                    Choose a time
+                  </Link>
+                </p>
+              </article>
+            )}
           </div>
         </div>
       </section>

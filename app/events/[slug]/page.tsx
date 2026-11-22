@@ -5,26 +5,27 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { LocalRange, TimeZoneName } from "@/components/booking/LocalTime";
 import { ActivationTime } from "@/components/booking/ActivationTime";
-import { SessionText } from "@/components/pages/SessionText";
+import { OfferingBody } from "@/components/pages/OfferingBody";
 import { EventRegisterForm } from "@/components/events/EventRegisterForm";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { eventModeLabel, eventTypeLabel, events, findEvent, priceLine, type EventDef } from "@/content/events";
+import { eventModeLabel, eventTypeLabel, events, priceLine } from "@/content/events";
 import { EVENT_REFUND_DAYS, spotsLabel } from "@/lib/booking-rules";
 import { getEventBySlug, getMyEventRegistration } from "@/lib/event-queries";
 import { eventJsonLd } from "@/lib/jsonld";
 import { formatEuro } from "@/lib/orders-service";
 import { mailConfig } from "@/lib/mail";
+import { findEventForPage } from "@/lib/offerings-cache";
+import type { PublicEvent } from "@/lib/offerings-public";
 import { safeDb } from "@/lib/safe";
 import { getCurrentUser } from "@/lib/session";
 import { getSiteUrl } from "@/lib/site";
 import { stripeConfig } from "@/lib/stripe-service";
-import { zonedToUtc } from "@/lib/time";
 
-// The event pages are prerendered at build time (generateStaticParams), so reading `params` blocks nothing.
-// This lets a wrong slug answer with a real 404 before anything is streamed.
+// The event pages of the code content are prerendered at build time (generateStaticParams), so reading `params` blocks nothing.
+// Events made in the admin are rendered on first visit. proxy.ts answers a wrong slug with a real 404 before anything is streamed.
 export const instant = false;
 
 export function generateStaticParams() {
@@ -33,49 +34,57 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: PageProps<"/events/[slug]">): Promise<Metadata> {
   const { slug } = await params;
-  const e = findEvent(slug);
+  const e = await findEventForPage(slug);
   if (!e) return {};
   return {
     title: e.title,
     description: e.summary,
     alternates: { canonical: `/events/${e.slug}` },
-    openGraph: { title: `${e.title} – KEA by Atiana`, description: e.summary, url: `/events/${e.slug}`, images: [{ url: e.image, alt: e.imageAlt }] },
+    openGraph: {
+      title: `${e.title} – KEA by Atiana`,
+      description: e.summary,
+      url: `/events/${e.slug}`,
+      ...(e.image ? { images: [{ url: e.image, alt: e.imageAlt }] } : {}),
+    },
   };
 }
 
 export default async function EventPage({ params, searchParams }: PageProps<"/events/[slug]">) {
   const { slug } = await params;
-  const e = findEvent(slug);
-  if (!e) notFound(); // real 404: the check happens before anything is streamed
-  const startsAt = zonedToUtc(e.start);
-  const endsAt = new Date(startsAt.getTime() + e.minutes * 60_000);
+  const e = await findEventForPage(slug); // the database, or the code content when the database cannot be read or is empty (task 12.8)
+  if (!e) notFound(); // real 404: proxy.ts already answered unknown slugs, this is the second check
+  const session = e.session; // null = the event has no date yet (sessions are added in the admin later)
   const siteUrl = getSiteUrl();
 
   return (
     <>
-      <JsonLd
-        data={eventJsonLd(siteUrl, {
-          slug: e.slug,
-          title: e.title,
-          summary: e.summary,
-          pricing: e.pricing,
-          mode: e.mode,
-          startsAt: startsAt.toISOString(),
-          endsAt: endsAt.toISOString(),
-          location: e.location,
-          image: e.image,
-          priceCents: e.priceCents,
-          soldOut: false,
-          cancelled: false,
-        })}
-      />
+      {session && (
+        <JsonLd
+          data={eventJsonLd(siteUrl, {
+            slug: e.slug,
+            title: e.title,
+            summary: e.summary,
+            pricing: e.pricing,
+            mode: e.mode,
+            startsAt: session.startsAt,
+            endsAt: session.endsAt,
+            location: e.location,
+            image: e.image,
+            priceCents: e.priceCents,
+            soldOut: false,
+            cancelled: session.cancelled,
+          })}
+        />
+      )}
       <Crumbs items={[{ label: "Events", href: "/events" }, { label: e.title }]} />
       <div className="wrap">
         <div className="ev-detail">
           <div className="grid gap-6" style={{ alignContent: "start" }}>
-            <div className="ev-photo">
-              <Image src={e.image} alt={e.imageAlt} width={1200} height={900} priority sizes="(min-width: 960px) 700px, 100vw" />
-            </div>
+            {e.image && (
+              <div className="ev-photo">
+                <Image src={e.image} alt={e.imageAlt} width={1200} height={900} priority sizes="(min-width: 960px) 700px, 100vw" />
+              </div>
+            )}
             <div>
               <div className="row-wrap" style={{ gap: 8, marginBottom: 10, minHeight: 30 }}>
                 <span className={`badge ${e.mode === "ONLINE" ? "b-online" : "b-person"}`}>{eventModeLabel[e.mode]}</span>
@@ -90,19 +99,19 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
             <dl className="ev-facts">
               <div>
                 <dt>Date and time</dt>
-                <dd>
-                  <LocalRange startIso={startsAt.toISOString()} endIso={endsAt.toISOString()} />
-                </dd>
+                <dd>{session ? <LocalRange startIso={session.startsAt} endIso={session.endsAt} /> : "To be announced"}</dd>
               </div>
-              <div>
-                <dt>Length</dt>
-                <dd>{e.lengthLabel}</dd>
-              </div>
-              {e.activationAfterMinutes && (
+              {e.lengthLabel && (
+                <div>
+                  <dt>Length</dt>
+                  <dd>{e.lengthLabel}</dd>
+                </div>
+              )}
+              {e.activationAfterMinutes && session && (
                 <div>
                   <dt>Greeting and activation</dt>
                   <dd>
-                    <ActivationTime startIso={startsAt.toISOString()} afterMinutes={e.activationAfterMinutes} />
+                    <ActivationTime startIso={session.startsAt} afterMinutes={e.activationAfterMinutes} />
                   </dd>
                 </div>
               )}
@@ -122,7 +131,7 @@ export default async function EventPage({ params, searchParams }: PageProps<"/ev
               <h2 id="about-h" style={{ fontSize: "1.6rem" }}>
                 About this event
               </h2>
-              <SessionText text={e.long} headingLevel={3} />
+              <OfferingBody markdown={e.body} headingLevel={3} />
               <p>
                 <Link href="/legal/health-disclaimer">Health notice</Link>
               </p>
@@ -178,7 +187,7 @@ async function SpotsBadge({ slug }: { slug: string }) {
   return <span className={`badge ${full ? "b-sold" : ev.spotsLeft <= 3 ? "b-low" : "b-spots"}`}>{full ? "Sold out" : spotsLabel(ev.spotsLeft)}</span>;
 }
 
-function SuccessBlock({ e, kind, donation }: { e: EventDef; kind: "free" | "donation0" | "donation" | "ticket"; donation: number }) {
+function SuccessBlock({ e, kind, donation }: { e: PublicEvent; kind: "free" | "donation0" | "donation" | "ticket"; donation: number }) {
   const emailsOff = mailConfig() === null;
   const demo = emailsOff ? " Demo: confirmation emails are not active yet." : "";
   const zoom = e.mode === "ONLINE" ? " Your Zoom link is on your booking page." : "";
@@ -208,7 +217,7 @@ function SuccessBlock({ e, kind, donation }: { e: EventDef; kind: "free" | "dona
   );
 }
 
-async function Panel({ e, searchParams }: { e: EventDef; searchParams: PageProps<"/events/[slug]">["searchParams"] }) {
+async function Panel({ e, searchParams }: { e: PublicEvent; searchParams: PageProps<"/events/[slug]">["searchParams"] }) {
   const sp = await searchParams;
   const done = sp.done !== undefined;
   const user = await getCurrentUser();
@@ -229,6 +238,7 @@ async function Panel({ e, searchParams }: { e: EventDef; searchParams: PageProps
   }
   const { ev, reg } = data;
   const closed = !ev || ev.cancelled || ev.started;
+  const noDate = e.session === null;
   const priceLabel = e.priceCents !== null ? `${formatEuro(e.priceCents)} [demo price]` : "";
 
   let body: React.ReactNode;
@@ -266,7 +276,7 @@ async function Panel({ e, searchParams }: { e: EventDef; searchParams: PageProps
       <div className="alert a-info" role="status">
         <Icon name="info" />
         <div>
-          <p>Registration is closed.</p>
+          <p>{noDate ? "Registration is not open yet. The date will be announced." : "Registration is closed."}</p>
           {ev?.started && <p>This event has ended.</p>}
         </div>
       </div>

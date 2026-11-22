@@ -1,29 +1,39 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { visibleFaqGroups } from "@/content/faq";
+import { RichText } from "@/components/ui/RichText";
+import { buildFaqGroups, FAQ_TEXT_KEYS, visibleFaqGroups } from "@/content/faq";
+import { FAQ_TEXTS, SITE_TEXT_DEFAULTS } from "@/content/site-texts";
 import { packsEnabled, referralEnabled } from "@/lib/features";
+import { splitParagraphs } from "@/lib/inline-text";
 import { faqJsonLd } from "@/lib/jsonld";
+import { getTexts } from "@/lib/site-text";
 
-export const metadata: Metadata = {
-  title: "FAQ",
-  description:
-    "Answers about classes, Zoom, credits, booking and cancellation and 1:1 sessions.",
-  alternates: { canonical: "/faq" },
-  openGraph: { title: "Questions people ask – KEA by Atiana", url: "/faq" },
-};
+/** Every FAQ text key with its code default (page texts + group titles + questions + answers). */
+const FAQ_DEFAULTS = Object.fromEntries(
+  [...Object.keys(FAQ_TEXTS), ...FAQ_TEXT_KEYS].map((k) => [k, SITE_TEXT_DEFAULTS[k] ?? ""]),
+);
 
-export default function FaqPage() {
-  const faqGroups = visibleFaqGroups(packsEnabled(), referralEnabled());
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTexts(FAQ_DEFAULTS);
+  return {
+    title: t["faq.meta.title"],
+    description: t["faq.meta.description"],
+    alternates: { canonical: "/faq" },
+    openGraph: { title: t["faq.meta.ogTitle"], url: "/faq" },
+  };
+}
+
+export default async function FaqPage() {
+  const t = await getTexts(FAQ_DEFAULTS);
+  const faqGroups = visibleFaqGroups(packsEnabled(), referralEnabled(), buildFaqGroups((key) => t[key]));
   return (
     <section className="sec" aria-labelledby="faq-h">
       <JsonLd data={faqJsonLd(faqGroups)} />
       <div className="prose-narrow">
-        <p className="eyebrow">FAQ</p>
-        <h1 id="faq-h">Questions people ask</h1>
+        <p className="eyebrow">{t["faq.page.eyebrow"]}</p>
+        <h1 id="faq-h">{t["faq.page.title"]}</h1>
         <p className="lead">
-          Short answers about classes, credits and booking. Cannot find yours? Please{" "}
-          <Link href="/contact">write to us</Link>.
+          <RichText text={t["faq.page.lead"]} />
         </p>
 
         <nav aria-label="FAQ topics" className="legal-nav" style={{ margin: "20px 0 36px" }}>
@@ -46,7 +56,11 @@ export default function FaqPage() {
                 <details key={item.q}>
                   <summary>{item.q}</summary>
                   <div className="acc-body">
-                    <p>{item.a}</p>
+                    {splitParagraphs(item.a).map((para, i) => (
+                      <p key={i}>
+                        <RichText text={para} />
+                      </p>
+                    ))}
                   </div>
                 </details>
               ))}

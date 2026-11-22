@@ -5,11 +5,11 @@ import { EventCard, type EventCardData } from "@/components/events/EventCard";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { PageSkeleton } from "@/components/ui/PageSkeleton";
-import { events, type EventDef } from "@/content/events";
 import { getUpcomingEvents } from "@/lib/event-queries";
 import type { EventPricing } from "@/lib/generated/prisma/enums";
+import { loadPublicOfferings } from "@/lib/offerings-cache";
+import { upcomingEvents, type PublicEvent } from "@/lib/offerings-public";
 import { safeDb } from "@/lib/safe";
-import { zonedToUtc } from "@/lib/time";
 
 export const metadata: Metadata = {
   title: "Events",
@@ -42,22 +42,22 @@ export default function EventsPage({ searchParams }: PageProps<"/events">) {
   );
 }
 
-function fromContent(e: EventDef): EventCardData {
-  const startsAt = zonedToUtc(e.start);
+function toCard(e: PublicEvent, spotsLeft: number | null): EventCardData | null {
+  if (!e.session) return null; // an event without a date is not listed (its page can still be opened)
   return {
     slug: e.slug,
     title: e.title,
     summary: e.summary,
     pricing: e.pricing,
     mode: e.mode,
-    startsAt: startsAt.toISOString(),
-    endsAt: new Date(startsAt.getTime() + e.minutes * 60_000).toISOString(),
+    startsAt: e.session.startsAt,
+    endsAt: e.session.endsAt,
     lengthLabel: e.lengthLabel,
     location: e.location,
     image: e.image,
     imageAlt: e.imageAlt,
     priceCents: e.priceCents,
-    spotsLeft: null,
+    spotsLeft,
   };
 }
 
@@ -66,21 +66,18 @@ async function EventList({ searchParams }: { searchParams: PageProps<"/events">[
   const raw = Array.isArray(sp.type) ? sp.type[0] : sp.type;
   const filter = FILTERS.find((f) => f.key === raw) ?? FILTERS[0];
 
+  // Events: the database (admin), or today's code content when the database cannot be read or is empty (task 12.8).
+  const { events } = await loadPublicOfferings();
+  // Live spots use the shared "seat taken" rule. null = the database could not answer: cards show no spots.
   const rows = await safeDb("events", async () => {
     const { prisma } = await import("@/lib/prisma");
     return getUpcomingEvents(prisma, { pricing: filter.pricing });
   });
-
-  let cards: EventCardData[];
-  if (rows === null) {
-    cards = events.filter((e) => !filter.pricing || e.pricing === filter.pricing).map(fromContent);
-  } else {
-    cards = rows.flatMap((r) => {
-      const def = events.find((e) => e.slug === r.slug);
-      if (!def) return [];
-      return [{ ...fromContent(def), startsAt: r.startsAt, endsAt: r.endsAt, location: r.location, priceCents: r.priceCents, spotsLeft: r.spotsLeft }];
-    });
-  }
+  const spots = new Map((rows ?? []).map((r) => [r.slug, r.spotsLeft]));
+  const cards = upcomingEvents(events, filter.pricing).flatMap((e) => {
+    const c = toCard(e, rows === null ? null : (spots.get(e.slug) ?? null));
+    return c ? [c] : [];
+  });
 
   return (
     <div className="wrap" style={{ paddingBottom: 72 }}>

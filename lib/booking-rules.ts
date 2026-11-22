@@ -39,6 +39,8 @@ export const MIN_DONATION_CENTS = 100;
 
 /** Demo value (open question for the owner): a credit given for an early cancel of a card-paid booking is valid this long. */
 export const CANCEL_CREDIT_VALID_DAYS = 70;
+/** Same validity in whole weeks, for texts (token {{CANCEL_CREDIT_VALID_WEEKS}}). 70 days = 10 weeks. Derived, never edited alone. */
+export const CANCEL_CREDIT_VALID_WEEKS = Math.round(CANCEL_CREDIT_VALID_DAYS / 7);
 
 /** How long an unpaid seat is kept while the visitor pays (also the Stripe Checkout lifetime). */
 export const HOLD_MINUTES = 30;

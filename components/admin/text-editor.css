@@ -1,0 +1,42 @@
+/* Text editor (task 12.7, wireframe A4). Classes start with te-. Mobile: tabs Edit / Preview. From 900 px: side by side. */
+.te { display: grid; gap: 16px; }
+.te-tabs { display: flex; gap: 8px; }
+.te-tab { min-height: 44px; padding: 8px 18px; border-radius: var(--radius-pill); border: 1px solid var(--color-line); background: #fff; color: var(--color-plum); font-weight: 700; cursor: pointer; }
+.te-tab[aria-selected="true"] { background: var(--color-plum); color: var(--color-cream); }
+.te-panels { display: grid; gap: 16px; }
+.te-box { width: 100%; }
+.te-preview { background: #fff; border: 1px solid var(--color-line); border-radius: var(--radius-tile); padding: 16px 18px; overflow-wrap: anywhere; }
+.te-preview h2 { font-size: 1rem !important; margin: 0 0 8px; color: var(--color-muted); }
+.te-preview-body p { margin: 0 0 10px; }
+.te-tokens { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
+.te-token { min-height: 44px; padding: 6px 12px; border-radius: var(--radius-pill); border: 1px solid var(--color-line); background: var(--color-sand); color: var(--color-plum); font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+.te-bar { position: sticky; bottom: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: var(--color-cream); border-top: 1px solid var(--color-line); padding: 12px 0; }
+.te-bar .grow { flex: 1 1 auto; }
+.te-help summary { cursor: pointer; font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+.te-help code { background: var(--color-sand); padding: 0 4px; border-radius: 4px; }
+@media (max-width: 899px) {
+  .te[data-tab="edit"] .te-preview-panel { display: none; }
+  .te[data-tab="preview"] .te-edit-panel { display: none; }
+}
+@media (min-width: 900px) {
+  .te-tabs { display: none; }
+  .te-panels { grid-template-columns: 1fr 1fr; align-items: start; }
+}
+
+/* History (wireframe A5): version cards on every width (a short list; the same markup as the phone cards of the other lists). */
+.te-versions { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+
+/* Legal editor (task 12.13, wireframes A6-A8). Badges, versions list, diff. Every state has a TEXT or a sign, never colour alone. */
+.lg-badge-warn { background: var(--color-warning-soft); color: var(--color-warning-ink); border-color: var(--color-glow); }
+.lg-note { margin: 0; }
+.lg-diff { background: #fff; border: 1px solid var(--color-line); border-radius: var(--radius-tile); padding: 8px 0; margin: 0; list-style: none; font-size: 0.9375rem; overflow-x: auto; }
+.lg-diff li { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 4px; padding: 2px 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.lg-diff .lg-sign { font-weight: 700; text-align: center; }
+.lg-diff .lg-add { background: var(--color-success-soft); color: #134A28; text-decoration: underline; } /* added = green + underline + "+" (text #134A28 on #E3F2E8, AA) */
+.lg-diff .lg-del { background: var(--color-danger-soft); color: #8A1A11; text-decoration: line-through; } /* removed = red + strike + "−" (text #8A1A11 on #FFF0EE, AA) */
+.lg-diff .lg-gap { color: var(--color-muted); font-style: italic; }
+.lg-tabs { display: flex; gap: 8px; }
+.lg-publish { display: grid; gap: 12px; }
+.lg-check { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; }
+.lg-check input { width: 24px; height: 24px; margin-top: 2px; flex: none; }
+.lg-prev { background: #fff; border: 1px solid var(--color-line); border-radius: var(--radius-tile); padding: 16px 18px; overflow-wrap: anywhere; }

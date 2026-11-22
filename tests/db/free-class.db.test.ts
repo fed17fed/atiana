@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Prisma } from "@/lib/generated/prisma/client";
 import type { PrismaClient } from "@/lib/generated/prisma/client";
 import { cancelBooking, createBooking } from "@/lib/booking-service";
-import { dbTestsOn, getDb, hideTestData, newSession, testFreeClassOffering, testOffering, testUser } from "./helpers";
+import { dbTestsOn, getDb, hideTestData, newSession, uniqueStart, testFreeClassOffering, testOffering, testUser } from "./helpers";
 
 const HOUR = 3600_000;
 const d = describe.skipIf(!dbTestsOn);
@@ -69,7 +69,7 @@ d("free class booking (local test database)", () => {
     expect(await book(users[0].id, s.id, { disclaimerAccepted: false })).toEqual({ ok: false, code: "DISCLAIMER" });
     const past = await newSession(db, freeId, 5, new Date(Date.now() - 5 * 60_000));
     expect(await book(users[0].id, past.id)).toEqual({ ok: false, code: "PAST" });
-    const exact = await newSession(db, freeId, 5, new Date(Date.UTC(2040, 5, 1, Math.floor(Math.random() * 20), Math.floor(Math.random() * 59), 7)));
+    const exact = await newSession(db, freeId, 5, uniqueStart());
     expect(await book(users[0].id, exact.id, { now: exact.startsAt })).toEqual({ ok: false, code: "PAST" });
     await db.classSession.update({ where: { id: s.id }, data: { status: "CANCELLED" } });
     expect(await book(users[0].id, s.id)).toEqual({ ok: false, code: "NOT_FOUND" });

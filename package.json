@@ -16,18 +16,25 @@
     "db:seed": "prisma db seed",
     "db:seed-classes": "tsx prisma/seed-classes.ts",
     "test:db": "RUN_DB_TESTS=true vitest run tests/db --no-file-parallelism",
-    "db:seed-events": "tsx prisma/seed-events.ts"
+    "db:seed-events": "tsx prisma/seed-events.ts",
+    "db:seed-testimonials": "tsx prisma/seed-testimonials.ts",
+    "db:mark-messages-read": "tsx prisma/mark-messages-read.ts",
+    "db:seed-legal": "tsx prisma/seed-legal.ts",
+    "db:seed-library-photos": "tsx prisma/seed-library-photos.ts",
+    "set-admin": "tsx scripts/set-admin.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "@vercel/blob": "^2.9.0",
     "next": "16.4.5",
     "next-auth": "^5.0.0-beta.32",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-markdown": "^10.1.0",
     "remark-gfm": "^4.0.1",
+    "sharp": "^0.35.5",
     "stripe": "^23.1.0",
     "zod": "^4.6.7"
   },

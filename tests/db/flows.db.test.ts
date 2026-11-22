@@ -118,7 +118,7 @@ d("account pages: a user sees only own data", () => {
 d("reminders", () => {
   it("sends (logs) once for classes in the next 24 hours, and not again", async () => {
     const u = await testUser(db, 6);
-    const now = new Date(Date.UTC(2041, 5, 1, 6, 0, 0) + Math.floor(Math.random() * 1e6) * 1000);
+    const now = new Date(Date.UTC(2041, 5, 1, 6, 0, 0) + Math.floor(Math.random() * 3e8) * 1000);
     const soon = await newSession(db, groupId, 5, new Date(now.getTime() + 10 * 3600_000));
     const far = await newSession(db, groupId, 5, new Date(now.getTime() + 40 * 3600_000));
     for (const s of [soon, far]) {

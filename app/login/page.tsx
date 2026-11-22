@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { DevLoginForm, LoginForm } from "@/components/pages/LoginForms";
@@ -30,8 +31,9 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
 async function LoginBody({ searchParams }: { searchParams: PageProps<"/login">["searchParams"] }) {
   const sp = await searchParams;
   const next = safeNextPath(Array.isArray(sp.next) ? sp.next[0] : sp.next);
-  const sent = sp.sent === "1";
-  const failed = sp.error === "1";
+  // "?sent=1" from our own redirects; "?provider=resend&type=email" is what Auth.js appends to pages.verifyRequest.
+  const sent = sp.sent === "1" || sp.type === "email";
+  const failed = sp.error !== undefined; // "1" from our own redirects, or the Auth.js code (Verification, Configuration, ...) on /login
 
   if (await getCurrentUser()) redirect(next);
 
@@ -40,11 +42,18 @@ async function LoginBody({ searchParams }: { searchParams: PageProps<"/login">["
 
   if (sent) {
     return (
-      <div className="alert a-success" role="status">
-        <Icon name="check" />
+      <div className="grid gap-6">
+        <div className="alert a-success" role="status">
+          <Icon name="check" />
+          <div>
+            <b>Check your email</b>
+            <p>If this email can log in, a sign-in link is on its way. It works once. If you do not see it after a few minutes, look in your spam folder or ask for a new link.</p>
+          </div>
+        </div>
         <div>
-          <b>Check your email</b>
-          <p>We sent you a sign-in link. It works once. If you do not see it, look in your spam folder.</p>
+          <Link className="btn btn-outline" href="/login" prefetch={false}>
+            Back to the login form
+          </Link>
         </div>
       </div>
     );
@@ -52,7 +61,7 @@ async function LoginBody({ searchParams }: { searchParams: PageProps<"/login">["
 
   return (
     <div className="grid gap-8">
-      <p className="lead">Enter your email. We send you a link, and you are in. New here? The same link creates your account.</p>
+      <p className="lead">Log in with your email. We send you a sign-in link.</p>
       {failed && (
         <div className="alert a-error" role="alert">
           <Icon name="error" />

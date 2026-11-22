@@ -15,6 +15,10 @@ export async function addOneToOneSlots(db: PrismaClient, raw: unknown, now = new
   const offering = await db.offering.findFirst({ where: { id: parsed.data.offeringId, type: "ONE_TO_ONE" } });
   if (!offering) return { ok: false, message: "This 1:1 offering was not found." };
 
+  if (offering.mode === "IN_PERSON" && parsed.data.zoomUrl) {
+    return { ok: false, message: "Please check the fields.", fieldErrors: { zoomUrl: ["This is an in-person offering. It has no Zoom link."] } };
+  }
+
   const plan = planSlots(parsed.data, now);
   if (plan.length === 0) return { ok: false, message: "All chosen times are in the past." };
 
@@ -25,7 +29,7 @@ export async function addOneToOneSlots(db: PrismaClient, raw: unknown, now = new
       endsAt: p.endsAt,
       capacity: 1,
       location: offering.mode === "IN_PERSON" ? offering.location : null,
-      zoomUrl: offering.mode === "ONLINE" ? DEMO_ZOOM_URL : null,
+      zoomUrl: offering.mode === "ONLINE" ? (parsed.data.zoomUrl ?? DEMO_ZOOM_URL) : null, // no link typed = today's placeholder
     })),
     skipDuplicates: true,
   });

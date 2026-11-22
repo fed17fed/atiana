@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
-import { findEvent } from "@/content/events";
+import { findEventForPage } from "@/lib/offerings-cache";
 import { getSiteUrl } from "@/lib/site";
-import { zonedToUtc } from "@/lib/time";
 
 const stamp = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 const esc = (t: string) => t.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
@@ -9,10 +8,10 @@ const esc = (t: string) => t.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(
 /** "Add to calendar": a plain .ics file for one event (public event data only, no personal data). */
 export async function GET(_req: Request, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
-  const e = findEvent(slug);
-  if (!e) notFound();
-  const start = zonedToUtc(e.start);
-  const end = new Date(start.getTime() + e.minutes * 60_000);
+  const e = await findEventForPage(slug); // the database, or the code content when the database cannot be read or is empty (task 12.8)
+  if (!e || !e.session) notFound(); // unknown or hidden event, or an event with no date yet
+  const start = new Date(e.session.startsAt);
+  const end = new Date(e.session.endsAt);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",

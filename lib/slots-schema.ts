@@ -1,5 +1,6 @@
 /** Admin form for 1:1 slots (validated on the server). */
 import { z } from "zod";
+import { zoomSchema } from "./admin/sessions-schema";
 import { BUSINESS_TZ, zonedToUtc } from "./time";
 
 export const slotFormSchema = z.object({
@@ -8,7 +9,12 @@ export const slotFormSchema = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Choose a start time, for example 14:00."),
   minutes: z.coerce.number().int().min(15, "At least 15 minutes.").max(240, "At most 240 minutes."),
   repeatWeeks: z.coerce.number().int().min(1, "At least 1.").max(12, "At most 12 weeks."),
+  /** Optional private Zoom link (same rules as a class session). Empty = null = the placeholder is used. */
+  zoomUrl: zoomSchema,
 });
+
+/** Edit of the Zoom link of one existing slot. */
+export const slotZoomSchema = z.object({ zoomUrl: zoomSchema });
 
 export type SlotForm = z.infer<typeof slotFormSchema>;
 

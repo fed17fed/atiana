@@ -7,7 +7,8 @@ import { PageSkeleton } from "@/components/ui/PageSkeleton";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
-import { classTypes, packs } from "@/content/catalog";
+import { packs } from "@/content/catalog";
+import { loadPublicOfferings } from "@/lib/offerings-cache";
 import { packsEnabled } from "@/lib/features";
 import { cancelRuleSentence } from "@/lib/booking-rules";
 import { countUsableCredits, getScheduleWeek, getUserActiveSessionIds, hasSessionsAfter } from "@/lib/catalog-queries";
@@ -51,6 +52,8 @@ async function ScheduleBody({ searchParams }: { searchParams: PageProps<"/schedu
   const weekRaw = Number.parseInt(first(sp.week) ?? "0", 10);
   const week = Number.isFinite(weekRaw) ? Math.min(Math.max(weekRaw, 0), MAX_WEEK) : 0;
   const typeRaw = first(sp.type);
+  // Class types for the filter: the database (admin) or the code content (task 12.8).
+  const { classes: classTypes } = await loadPublicOfferings();
   const classSlug = classTypes.some((c) => c.slug === typeRaw) ? typeRaw : undefined;
 
   const user = await getCurrentUser();

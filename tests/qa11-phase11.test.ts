@@ -37,8 +37,10 @@ describe("QA11 prices", () => {
     ]);
   });
   it("home card text 'Free or from €20' matches the cheapest paid class", () => {
-    const home = readFileSync(join(root, "app/page.tsx"), "utf8");
+    // Since task 12.6 the words are a text key (content/site-texts.ts); the page adds the price from the class list.
+    const home = readFileSync(join(root, "app/page.tsx"), "utf8") + readFileSync(join(root, "content/site-texts.ts"), "utf8");
     expect(home).toMatch(/Free or from/);
+    expect(home).toMatch(/priceText\(Math\.min/);
     const min = Math.min(...classTypes.filter((c) => c.priceCents > 0).map((c) => c.priceCents));
     expect(min).toBe(2000);
   });
@@ -141,12 +143,13 @@ describe("QA11 no leaks, no old demo teacher, packs hidden, only real photos 01 
     const hit = (re: RegExp) => files.filter((f) => re.test(readFileSync(f, "utf8"))).map((f) => f.replace(root, ""));
     expect(hit(/Aoife|zoom\.us|kundalini\.ie|info@kundalini/i)).toEqual([]);
     for (const n of secrets) expect(files.filter((f) => compact(readFileSync(f, "utf8")).includes(n)).map((f) => f.replace(root, "")), "private number").toEqual([]);
-  });
+  }, 60_000); // reads every build file: slow under full-suite load (the default 5 s was flaky). Same checks, longer limit for this test only.
   it("home teacher section says Atiana and every review is labelled Demo review", () => {
-    const home = readFileSync(join(root, "app/page.tsx"), "utf8");
+    const home = readFileSync(join(root, "app/page.tsx"), "utf8") + readFileSync(join(root, "content/site-texts.ts"), "utf8");
     expect(home).toMatch(/Hello, I am Atiana/);
     expect(home).not.toMatch(/Demo teacher/);
-    expect(home).toMatch(/Demo review/);
+    // Since task 12.11 the reviews are drawn by HomeTestimonials (label "Demo review" for isDemo rows and for the code list).
+    expect(readFileSync(join(root, "components/pages/HomeTestimonials.tsx"), "utf8")).toMatch(/Demo review/);
   });
   it("packs are off by default and not rendered by the pages without the flag", () => {
     expect(packsEnabled({})).toBe(false);

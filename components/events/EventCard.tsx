@@ -16,7 +16,8 @@ export type EventCardData = {
   endsAt: string;
   lengthLabel: string;
   location: string | null;
-  image: string;
+  /** null = no picture (an event made in the admin without an image) */
+  image: string | null;
   imageAlt: string;
   priceCents: number | null;
   /** null = unknown (database not ready) */
@@ -29,7 +30,7 @@ export function EventCard({ e, priority = false }: { e: EventCardData; priority?
   return (
     <article className="card">
       <div className="media">
-        <Image src={e.image} alt={e.imageAlt} width={800} height={600} priority={priority} fetchPriority={priority ? "high" : "auto"} sizes="(min-width: 900px) 380px, 90vw" />
+        {e.image && <Image src={e.image} alt={e.imageAlt} width={800} height={600} priority={priority} fetchPriority={priority ? "high" : "auto"} sizes="(min-width: 900px) 380px, 90vw" />}
         <span className="badge badge-over b-free">{eventTypeLabel[e.pricing]}</span>
       </div>
       <div className="body">

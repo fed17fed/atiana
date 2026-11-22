@@ -46,7 +46,8 @@ export type EventLd = {
   startsAt: string;
   endsAt: string;
   location: string | null;
-  image: string;
+  /** Local path (/real/..), a full https address (Vercel Blob) or null (no picture) */
+  image: string | null;
   priceCents: number | null;
   soldOut: boolean;
   cancelled: boolean;
@@ -68,7 +69,7 @@ export function eventJsonLd(siteUrl: string, e: EventLd) {
     location: online
       ? { "@type": "VirtualLocation", url }
       : { "@type": "Place", name: e.location ?? "Ireland", address: { "@type": "PostalAddress", addressRegion: "County Wicklow", addressCountry: "IE" } },
-    image: [`${siteUrl}${e.image}`],
+    ...(e.image ? { image: [/^https?:\/\//i.test(e.image) ? e.image : `${siteUrl}${e.image}`] } : {}),
     organizer: { "@type": "Organization", name: SITE_NAME, url: siteUrl },
     offers: {
       "@type": "Offer",

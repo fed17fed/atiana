@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { mailConfig, sendMail } from "@/lib/mail";
 import { buildBookingMail } from "@/lib/notifications";
-import { CANCELLATION_HOURS } from "@/lib/booking-rules";
+import { CANCELLATION_HOURS, REMINDER_HOURS } from "@/lib/booking-rules";
 
 describe("mail is OFF without keys", () => {
   it("no config without key or sender", () => {
@@ -61,5 +61,9 @@ describe("booking mails", () => {
     });
     expect(m.text).toContain("Place: Dublin (demo)");
     expect(m.text).not.toContain("zoom");
+  });
+  it("reminder mail uses REMINDER_HOURS (not the cancel deadline) for its window", () => {
+    const m = buildBookingMail("reminder", "a@b.test", session);
+    expect(m.text).toContain(`in the next ${REMINDER_HOURS} hours`);
   });
 });

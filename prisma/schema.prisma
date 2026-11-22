@@ -111,13 +111,18 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts          Account[]
-  sessions          Session[]
-  bookings          Booking[]
-  creditGrants      CreditGrant[]
-  orders            Order[]
-  referralsMade     Referral[]    @relation("Referrer")
-  referralsReceived Referral[]    @relation("ReferredUser")
+  accounts             Account[]
+  sessions             Session[]
+  bookings             Booking[]
+  creditGrants         CreditGrant[]
+  orders               Order[]
+  referralsMade        Referral[]        @relation("Referrer")
+  referralsReceived    Referral[]        @relation("ReferredUser")
+  adminAuditLogs       AdminAuditLog[]
+  contentBlocksUpdated ContentBlock[]    @relation("ContentBlockUpdatedBy")
+  contentRevisionsMade ContentRevision[] @relation("ContentRevisionCreatedBy")
+  legalVersionsMade    LegalVersion[]    @relation("LegalVersionCreatedBy")
+  mediaImagesMade      MediaImage[]      @relation("MediaImageCreatedBy")
 
   @@index([referredById])
 }
@@ -177,6 +182,15 @@ model Offering {
   eventPricing EventPricing? // only for type EVENT
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  // Phase 12 (admin): editable fields. All optional or with a default, so old rows stay valid.
+  imageAlt               String? // alt text of `image`
+  level                  String? // e.g. "All levels"
+  minutes                Int? // session length in minutes (data, not a booking rule)
+  lengthLabel            String? // e.g. "30 min"
+  activationAfterMinutes Int? // greeting first, main part starts this many minutes after the start
+  sortOrder              Int       @default(0)
+  adminEditedAt          DateTime? // set when an admin edits the row: seeds must skip it
 
   sessions     ClassSession[]
   priceOptions PriceOption[]
@@ -369,6 +383,12 @@ model Testimonial {
   text      String
   published Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  // Phase 12 (admin)
+  place     String? // e.g. "Dublin"
+  isDemo    Boolean  @default(false) // true = shown with the "Demo review" label
+  sortOrder Int      @default(0)
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 model NewsletterSubscriber {
@@ -388,9 +408,110 @@ model ContactMessage {
   email     String
   message   String
   createdAt DateTime @default(now())
+  readAt    DateTime? // set when an admin clicks "Mark as read" (task 12.7). NULL = unread
 }
 
 model SiteSetting {
   key   String @id
   value String
+}
+
+// Who changed what in the admin (task 12.3). One row per admin action. Rows are never deleted or edited.
+// `summary` is a short sentence: no secrets, no Zoom links, no email addresses of clients.
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String // e.g. "slots.add"
+  entity    String // e.g. "ClassSession"
+  entityId  String?
+  summary   String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([entity, entityId])
+  @@index([userId])
+}
+
+// ---- Phase 12: editable texts (task 12.4). Code defaults stay in content/*; these tables only hold what an admin changed. ----
+
+enum ContentKind {
+  TEXT
+  INLINE // one line, only *italic*
+  MARKDOWN
+  META // SEO / Open Graph text
+  ALT // image alt text
+  URL
+}
+
+enum LegalStatus {
+  DRAFT
+  PUBLISHED
+}
+
+// One editable text. `key` never changes after it is in the DB (see docs/admin/text-keys.md).
+model ContentBlock {
+  id          String      @id @default(cuid())
+  key         String      @unique // e.g. "home.hero.title"
+  value       String
+  kind        ContentKind @default(TEXT)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  updatedById String?
+  updatedBy   User?       @relation("ContentBlockUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@index([updatedById])
+}
+
+// History: one row per save (and per restore). Never edited, never deleted. `key` is plain text on purpose (no FK).
+model ContentRevision {
+  id          String   @id @default(cuid())
+  key         String
+  value       String
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation("ContentRevisionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([key, createdAt])
+  @@index([createdById])
+}
+
+// Legal pages: every publish is a new version; old versions stay (plan 14.5).
+model LegalVersion {
+  id             String      @id @default(cuid())
+  slug           String // booking-cancellation, terms, privacy, cookies, health-disclaimer
+  version        Int
+  title          String
+  body           String // markdown, may contain rule tokens
+  status         LegalStatus @default(DRAFT)
+  lawyerApproved Boolean     @default(false)
+  approvedAt     DateTime?
+  publishedAt    DateTime?
+  note           String      @default("")
+  createdAt      DateTime    @default(now())
+  createdById    String?
+  createdBy      User?       @relation("LegalVersionCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([slug, version])
+  @@index([slug, status])
+  @@index([createdById])
+}
+
+// Image library (task 12.12): one row per uploaded image (always saved as WebP). Alt text is required.
+// Rows are never deleted: "old images are never removed". `url` is "/uploads/<file>" (local folder) or the Vercel Blob URL.
+model MediaImage {
+  id          String   @id @default(cuid())
+  url         String   @unique
+  alt         String
+  storage     String // "local" or "blob"
+  width       Int
+  height      Int
+  bytes       Int // size of the saved WebP file
+  createdAt   DateTime @default(now())
+  createdById String?
+  createdBy   User?    @relation("MediaImageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([createdById])
 }

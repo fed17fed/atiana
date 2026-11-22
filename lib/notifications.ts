@@ -1,6 +1,6 @@
 /** Emails about bookings. They go out through lib/mail.ts (logged only when Resend is off). */
 import type { PrismaClient } from "./generated/prisma/client";
-import { CANCELLATION_HOURS, EVENT_REFUND_DAYS } from "./booking-rules";
+import { CANCELLATION_HOURS, EVENT_REFUND_DAYS, REMINDER_HOURS } from "./booking-rules";
 import { sendMail } from "./mail";
 import { formatEuro } from "./orders-service";
 import { BUSINESS_TZ, formatDateTime } from "./time";
@@ -31,7 +31,7 @@ export function buildBookingMail(
   const intro =
     kind === "confirmation"
       ? "Your booking is confirmed."
-      : `A friendly reminder about your class in the next ${CANCELLATION_HOURS} hours.`;
+      : `A friendly reminder about your class in the next ${REMINDER_HOURS} hours.`;
   const text = [
     intro,
     "",

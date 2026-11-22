@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { SessionText } from "@/components/pages/SessionText";
+import { OfferingBody } from "@/components/pages/OfferingBody";
 import { PackBuyForm } from "@/components/booking/PackBuyForm";
 import { Crumbs } from "@/components/ui/Crumbs";
 import { Icon } from "@/components/ui/Icon";
-import { classTypes, packs } from "@/content/catalog";
+import { packs } from "@/content/catalog";
 import { CANCELLATION_HOURS, cancelRuleSentence, priceText } from "@/lib/booking-rules";
 import { packsEnabled } from "@/lib/features";
 import { getActivePackages } from "@/lib/catalog-queries";
+import { loadPublicOfferings } from "@/lib/offerings-cache";
 import { formatEuro } from "@/lib/orders-service";
 import { safeDb } from "@/lib/safe";
 import { stripeConfig } from "@/lib/stripe-service";
@@ -21,7 +22,9 @@ export const metadata: Metadata = {
   openGraph: { title: "Online group classes – KEA by Atiana", url: "/classes" },
 };
 
-export default function ClassesPage() {
+export default async function ClassesPage() {
+  // DB classes (admin), or today's code content when the database cannot be read or is empty (task 12.8).
+  const { classes } = await loadPublicOfferings();
   return (
     <>
       <Crumbs items={[{ label: "Classes" }]} />
@@ -49,16 +52,17 @@ export default function ClassesPage() {
             Class types
           </h2>
           <div className="klasses">
-            {classTypes.map((c) => (
+            {classes.length === 0 && <p>New classes are coming soon. Please check the <Link href="/schedule">schedule</Link> or come back later.</p>}
+            {classes.map((c) => (
               <article className="klass" key={c.slug}>
                 <h3>{c.title}</h3>
                 <div className="meta">
-                  <span>{c.level}</span>
+                  {c.level && <span>{c.level}</span>}
                   <span>{c.minutes} minutes</span>
                   <span>Online (Zoom)</span>
                   <span><b>{priceText(c.priceCents)}</b></span>
                 </div>
-                <p>{c.text}</p>
+                <p>{c.summary}</p>
                 {c.activationAfterMinutes && (
                   <p className="hint">
                     Greeting first. The main activation starts {c.activationAfterMinutes} minutes after the start. The door closes then.
@@ -66,7 +70,7 @@ export default function ClassesPage() {
                 )}
                 <details>
                   <summary>Read the full description</summary>
-                  <SessionText text={c.long} headingLevel={3} />
+                  <OfferingBody markdown={c.body} headingLevel={3} />
                 </details>
               </article>
             ))}

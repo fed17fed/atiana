@@ -1,7 +1,8 @@
 /**
  * Catalog for classes, packs and 1:1. Classes = the 4 real classes of Atiana (docs/real-sessions-content.md, 2026-11-12);
  * 1:1 and packs are still demo. DEMO PRICES ONLY. The owner sets real prices later.
- * Used by the pages (so /classes works without a database) and by prisma/seed-classes.ts.
+ * Used by the pages as the fallback when the database cannot be read or is empty (task 12.8) and by prisma/seed-classes.ts.
+ * The 1:1 `summary` is the longer text that the /one-to-one page showed before (owner answer Q10b, finding F-8).
  */
 import { DEFAULT_CAPACITY } from "@/lib/booking-rules";
 import { TEXT_BLITZ, TEXT_DIVE_DEEP, TEXT_GRATITUDE, TEXT_KEA, type SessionLongText } from "./session-texts";
@@ -121,7 +122,7 @@ export const oneToOneOfferings: OneToOneDef[] = [
     priceName: "Online 1:1",
     location: null,
     summary:
-      "Join from your own home. We talk for a few minutes about what you would like. Then we practise together, step by step.",
+      "Join from your own home. We talk for a few minutes about what you would like. Then we practise together, step by step. You can ask anything. You get a short summary by email if you wish.",
   },
   {
     slug: "in-person-1-1",
@@ -132,7 +133,7 @@ export const oneToOneOfferings: OneToOneDef[] = [
     priceName: "In person 1:1",
     location: "Dublin, Ireland (demo location)", // [OWNER: address and city of the in-person room]
     summary:
-      "Meet your teacher face to face in a quiet room in Ireland. Please arrive 5 minutes early and wear comfortable clothes.",
+      "Meet your teacher face to face in a quiet room in Ireland. The session follows the same gentle flow as online sessions. Please arrive on time and wear comfortable clothes. Late arrival shortens the session.",
   },
 ];
 

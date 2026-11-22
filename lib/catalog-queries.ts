@@ -35,7 +35,7 @@ function toItem(s: {
   endsAt: Date;
   capacity: number;
   location: string | null;
-  offering: { title: string; slug: string; mode: Mode; location: string | null; priceOptions: { amountCents: number }[] };
+  offering: { title: string; slug: string; mode: Mode; location: string | null; activationAfterMinutes: number | null; adminEditedAt: Date | null; priceOptions: { amountCents: number }[] };
   _count: { bookings: number };
 }): ScheduleItem {
   return {
@@ -50,7 +50,8 @@ function toItem(s: {
     priceCents: s.offering.priceOptions[0]?.amountCents ?? null,
     capacity: s.capacity,
     spotsLeft: spotsLeft(s.capacity, s._count.bookings),
-    activationAfterMinutes: classTypes.find((c) => c.slug === s.offering.slug)?.activationAfterMinutes ?? null,
+    // The offering's own value (admin, task 12.8). Before an admin edit the code value still counts.
+    activationAfterMinutes: s.offering.activationAfterMinutes ?? (s.offering.adminEditedAt ? null : (classTypes.find((c) => c.slug === s.offering.slug)?.activationAfterMinutes ?? null)),
   };
 }
 

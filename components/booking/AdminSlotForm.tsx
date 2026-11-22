@@ -2,11 +2,12 @@
 
 import { useActionState, useState } from "react";
 import { addSlots, type SlotState } from "@/app/admin/slots/actions";
+import { ZOOM_URL_MAX } from "@/lib/admin/sessions-schema";
 import { Icon } from "@/components/ui/Icon";
 
 const initial: SlotState = { status: "idle" };
 
-export function AdminSlotForm({ offerings }: { offerings: { id: string; title: string }[] }) {
+export function AdminSlotForm({ offerings }: { offerings: { id: string; title: string; mode: "ONLINE" | "IN_PERSON" }[] }) {
   const [state, action, pending] = useActionState(addSlots, initial);
   // Controlled fields: React clears plain form fields after a server action, even after an error.
   const [offeringId, setOfferingId] = useState(offerings[0]?.id ?? "");
@@ -14,6 +15,8 @@ export function AdminSlotForm({ offerings }: { offerings: { id: string; title: s
   const [time, setTime] = useState("14:00");
   const [minutes, setMinutes] = useState("60");
   const [repeat, setRepeat] = useState("1");
+  const [zoom, setZoom] = useState("");
+  const online = offerings.find((o) => o.id === offeringId)?.mode !== "IN_PERSON";
   const err = (k: string) => (state.status === "error" ? state.fieldErrors?.[k]?.[0] : undefined);
   return (
     <form action={action} noValidate className="form-grid">
@@ -59,6 +62,16 @@ export function AdminSlotForm({ offerings }: { offerings: { id: string; title: s
         <span className="hint">1 = only this day.</span>
         {err("repeatWeeks") && <p className="err">{err("repeatWeeks")}</p>}
       </div>
+      {online ? (
+      <div className={`field ${err("zoomUrl") ? "has-error" : ""}`}>
+        <label htmlFor="s-zoom">Zoom link (private, optional)</label>
+        <input id="s-zoom" name="zoomUrl" type="url" inputMode="url" autoComplete="off" maxLength={ZOOM_URL_MAX} className="input" placeholder="https://" aria-describedby="s-zoom-h" aria-invalid={!!err("zoomUrl")} value={zoom} onChange={(e) => setZoom(e.target.value)} />
+        <span id="s-zoom-h" className="hint">Only shown to the booked person, in their email and My bookings. Never on public pages. Leave empty to use the placeholder for now. The same link is used for every slot you add here.</span>
+        {err("zoomUrl") && <p className="err">{err("zoomUrl")}</p>}
+      </div>
+      ) : (
+        <p className="hint">This is an in-person offering. It has no Zoom link.</p>
+      )}
       <button className="btn btn-primary" type="submit" disabled={pending}>
         {pending ? "Saving..." : "Add slots"}
       </button>

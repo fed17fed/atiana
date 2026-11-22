@@ -1,9 +1,12 @@
 /**
- * FAQ: 15 questions from docs/demo-content.md section 13 (approved 2026-11-09).
- * Demo values are shown as "(demo price)" / "(demo value)". [OWNER: ...] notes stay visible
- * where the text gives no demo value.
+ * FAQ structure: groups, order, flags and the KEY of every text (task 12.6).
+ * The texts themselves (questions, answers, group titles) are code defaults in content/site-texts.ts (FAQ_TEXTS) and can be
+ * edited in the admin (ContentBlock). Order of groups / questions and the flags `packOnly` / referral stay in code (plan 14.3).
+ * Demo values are shown as "(demo price)" / "(demo value)". [OWNER: ...] notes stay visible where the text gives no value.
  */
-import { CANCELLATION_HOURS } from "@/lib/booking-rules";
+import { SITE_TEXT_DEFAULTS } from "@/content/site-texts";
+import { inlineToPlain } from "@/lib/inline-text";
+import { fillTokens } from "@/lib/text-tokens";
 
 export type FaqItem = {
   q: string;
@@ -21,103 +24,88 @@ export type FaqGroup = {
   items: FaqItem[];
 };
 
-export const faqGroups: FaqGroup[] = [
+type FaqItemDef = {
+  /** Text keys are `${key}.q` and `${key}.a`. */
+  key: string;
+  packOnly?: boolean;
+  /** Key of the referral sentence (shown only when "Refer a friend" is on). */
+  referralNoteKey?: string;
+};
+type FaqGroupDef = {
+  id: string;
+  /** Text key of the group title. */
+  titleKey: string;
+  titleWithoutPacksKey?: string;
+  items: FaqItemDef[];
+};
+
+/** Order and flags (code). Keys never change after they are in the DB. */
+export const FAQ_STRUCTURE: FaqGroupDef[] = [
   {
     id: "classes-zoom",
-    title: "Classes & Zoom",
+    titleKey: "faq.group.classesZoom.title",
     items: [
-      {
-        q: "Do I need experience?",
-        a: "No. All sessions welcome beginners. You only need to lie down, listen to the music and allow what arises.",
-      },
-      {
-        q: "What do I need for a class?",
-        a: "A device with Zoom, a quiet place, a yoga mat or comfy rug to lie on, and comfortable clothes. Wireless headphones or a speaker give good sound. Please keep your camera on.",
-      },
-      {
-        q: "Do I need my camera on?",
-        a: "Yes. Please keep your camera on and lie down so that your full body is visible from the side, from head to toes. The teacher watches each person during the session. We do not record sessions.",
-      },
-      {
-        q: "When do I get the Zoom link?",
-        a: `We send it by email right after you book. We also send a reminder ${CANCELLATION_HOURS} hours before the class.`,
-      },
+      { key: "faq.classesZoom.experience" },
+      { key: "faq.classesZoom.whatNeed" },
+      { key: "faq.classesZoom.camera" },
+      { key: "faq.classesZoom.zoomLink" },
     ],
   },
   {
     id: "credits",
-    title: "Packs & credits",
-    titleWithoutPacks: "Credits",
+    titleKey: "faq.group.credits.title",
+    titleWithoutPacksKey: "faq.group.credits.titleWithoutPacks",
     items: [
-      {
-        packOnly: true,
-        q: "What is a class pack?",
-        a: "A pack gives you several credits at a lower price. One credit books one group class. A 5-pack is €60 and a 10-pack is €105 (demo price).",
-      },
-      {
-        packOnly: true,
-        q: "How long do credits last?",
-        a: 'Credits from a 5-pack are valid for 10 weeks. Credits from a 10-pack are valid for 16 weeks. You can see the date in "My credits". (demo values)',
-      },
-      {
-        q: "Can I share my credits with a friend?",
-        a: "No. Credits belong to your account.",
-        referralNote: "You can invite a friend with your link and earn a free credit.",
-      },
+      { key: "faq.credits.whatIsPack", packOnly: true },
+      { key: "faq.credits.howLong", packOnly: true },
+      { key: "faq.credits.share", referralNoteKey: "faq.credits.share.referralNote" },
     ],
   },
   {
     id: "booking-cancellation",
-    title: "Booking & cancellation",
-    items: [
-      {
-        q: "Can I cancel a class?",
-        a: `Yes. Cancel up to ${CANCELLATION_HOURS} hours before the class and you get your credit back. If you paid by card, you also get a credit. A free class can be cancelled any time before it starts. [OWNER: confirm "credit back" also for single paid classes]`,
-      },
-      {
-        q: `What if I miss the ${CANCELLATION_HOURS}-hour limit or do not show up?`,
-        a: "The credit is used and we cannot refund it. If you had a real problem, write to us and we will try to help.",
-      },
-      {
-        q: "What if a class is cancelled by KEA?",
-        a: "We will email you. You get your credit back, or you can move to another class.",
-      },
-    ],
+    titleKey: "faq.group.booking.title",
+    items: [{ key: "faq.booking.cancel" }, { key: "faq.booking.missLimit" }, { key: "faq.booking.cancelledByKea" }],
   },
   {
     id: "one-to-one",
-    title: "1:1 sessions",
-    items: [
-      {
-        q: "How is a 1:1 session different from a group class?",
-        a: "It is only for you and your teacher. You choose the topic and the pace. You can meet online or in person.",
-      },
-      {
-        q: "Can I move my 1:1 session?",
-        a: `Yes, up to ${CANCELLATION_HOURS} hours before. Use "My bookings" or write to us.`,
-      },
-    ],
+    titleKey: "faq.group.oneToOne.title",
+    items: [{ key: "faq.oneToOne.difference" }, { key: "faq.oneToOne.move" }],
   },
   {
     id: "other",
-    title: "Other",
-    items: [
-      {
-        q: "Are your classes medical care?",
-        a: "No. Our classes are for relaxation and wellbeing only. They do not replace advice from a doctor. If you are pregnant or have a medical condition, please talk to your doctor first.",
-      },
-      {
-        q: "How can I contact you or leave the newsletter?",
-        a: "Use the Contact page or write to [CONTACT EMAIL]. Every newsletter has an unsubscribe link at the bottom.",
-      },
-    ],
+    titleKey: "faq.group.other.title",
+    items: [{ key: "faq.other.medical" }, { key: "faq.other.contact" }],
   },
 ];
 
-/** Text for search engines: no [OWNER: ...] notes and no "(demo ...)" tags. */
+/** All text keys the FAQ page needs (for tests and for the editor list). */
+export const FAQ_TEXT_KEYS: string[] = FAQ_STRUCTURE.flatMap((g) => [
+  g.titleKey,
+  ...(g.titleWithoutPacksKey ? [g.titleWithoutPacksKey] : []),
+  ...g.items.flatMap((i) => [`${i.key}.q`, `${i.key}.a`, ...(i.referralNoteKey ? [i.referralNoteKey] : [])]),
+]);
+
+/** Builds the full group list from a key -> text lookup (already filled with tokens). */
+export function buildFaqGroups(text: (key: string) => string): FaqGroup[] {
+  return FAQ_STRUCTURE.map((g) => ({
+    id: g.id,
+    title: text(g.titleKey),
+    ...(g.titleWithoutPacksKey ? { titleWithoutPacks: text(g.titleWithoutPacksKey) } : {}),
+    items: g.items.map((i) => ({
+      q: text(`${i.key}.q`),
+      a: text(`${i.key}.a`),
+      ...(i.packOnly ? { packOnly: true } : {}),
+      ...(i.referralNoteKey ? { referralNote: text(i.referralNoteKey) } : {}),
+    })),
+  }));
+}
+
+/** The code defaults (today's FAQ), tokens filled. Used when the database has no edited text. */
+export const faqGroups: FaqGroup[] = buildFaqGroups((key) => fillTokens(SITE_TEXT_DEFAULTS[key] ?? ""));
+
 /** FAQ groups for the page: pack questions and referral sentences are left out while packs / referral are hidden. */
-export function visibleFaqGroups(showPacks: boolean, showReferral = false): FaqGroup[] {
-  return faqGroups
+export function visibleFaqGroups(showPacks: boolean, showReferral = false, groups: FaqGroup[] = faqGroups): FaqGroup[] {
+  return groups
     .map((g) => ({
       id: g.id,
       title: showPacks ? g.title : (g.titleWithoutPacks ?? g.title),
@@ -128,9 +116,9 @@ export function visibleFaqGroups(showPacks: boolean, showReferral = false): FaqG
     .filter((g) => g.items.length > 0);
 }
 
+/** Text for search engines: no [OWNER: ...] notes, no "(demo ...)" tags, no *marks* and no [label](link) marks. */
 export function plainText(answer: string): string {
-  return answer
-    .replace(/\[OWNER:[^\]]*\]/g, "")
+  return inlineToPlain(answer.replace(/\[OWNER:[^\]]*\]/g, ""))
     .replace(/\s*\(demo (?:price|value|values)\)/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();

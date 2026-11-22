@@ -10,7 +10,6 @@ import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
 import { CANCELLATION_HOURS, isFreePrice, priceText, spotsLabel } from "@/lib/booking-rules";
 import { countUsableCredits, getBookableSession } from "@/lib/catalog-queries";
-import { classTypes } from "@/content/catalog";
 import { safeDb } from "@/lib/safe";
 import { getCurrentUser } from "@/lib/session";
 import { stripeConfig } from "@/lib/stripe-service";
@@ -59,7 +58,7 @@ async function Body({ searchParams }: { searchParams: PageProps<"/book/class">["
   const full = c.spotsLeft <= 0;
   const price = priceText(c.priceCents);
   const free = isFreePrice(c.priceCents);
-  const activationAfter = classTypes.find((t) => t.slug === c.slug)?.activationAfterMinutes;
+  const activationAfter = c.activationAfterMinutes;
   const loginHref = `/login?next=${encodeURIComponent(`/book/class?session=${sessionId}`)}`;
 
   return (

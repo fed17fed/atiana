@@ -26,15 +26,8 @@ export function isIndexingAllowed(env: NodeJS.ProcessEnv = process.env): boolean
   return env.ALLOW_INDEXING?.trim().toLowerCase() === "true";
 }
 
-/** Pages that go into sitemap.xml (only pages that exist now; later phases add theirs). */
-export const sitemapPaths = [
-  "/",
-  "/about",
-  "/classes",
-  "/schedule",
-  "/one-to-one",
-  "/events",
-  ...events.map((e) => `/events/${e.slug}`),
+const sitemapBase = ["/", "/about", "/classes", "/schedule", "/one-to-one", "/events"] as const;
+const sitemapTail = [
   "/donate",
   "/contact",
   "/faq",
@@ -44,3 +37,14 @@ export const sitemapPaths = [
   "/legal/booking-cancellation",
   "/legal/health-disclaimer",
 ] as const;
+
+/**
+ * Pages that go into sitemap.xml: the fixed pages and one page per event (task 12.8).
+ * `eventSlugs` come from the database (events made in the admin) or, when the database cannot be read or is empty, from the code content.
+ */
+export function buildSitemapPaths(eventSlugs: readonly string[]): string[] {
+  return [...sitemapBase, ...eventSlugs.map((slug) => `/events/${slug}`), ...sitemapTail];
+}
+
+/** The sitemap with the code events (the fallback list). */
+export const sitemapPaths = buildSitemapPaths(events.map((e) => e.slug));

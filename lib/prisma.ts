@@ -12,10 +12,14 @@ function createPrismaClient() {
   });
 }
 
-/** Creates the client on first use. Importing this file never throws (builds work without a database). */
+/**
+ * Creates the client on first use. Importing this file never throws (builds work without a database).
+ * ONE client per process, in every mode (dev, test, production): it is kept in globalThis. Before 2026-11-21 it was
+ * kept only outside production, so every query made a new client + connection pool (30 parallel requests opened ~97 connections).
+ */
 export function getPrisma(): PrismaClient {
   const client = globalForPrisma.prisma ?? createPrismaClient();
-  if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = client;
+  globalForPrisma.prisma = client;
   return client;
 }
 
