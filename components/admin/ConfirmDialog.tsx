@@ -4,7 +4,7 @@ import { useId, useRef } from "react";
 
 /**
  * Wireframe A14. Native <dialog>: the browser traps focus, Escape closes it and focus returns to the button.
- * The safe button (Cancel) has the first focus. Use words like Hide / Archive / Restore. No remove-style wording (owner rule: nothing is removed).
+ * The safe button (Cancel) has the first focus. Use words like Hide / Archive / Restore. Only exception: image Delete (owner decision 2026-11-22, the dialog is its 2nd step).
  */
 export function ConfirmDialog({
   triggerLabel,

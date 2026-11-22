@@ -1,18 +1,36 @@
 import type { Metadata } from "next";
+import { ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { ImagePicker } from "@/components/admin/ImagePicker";
 import { ImageUploadForm, Thumb } from "@/components/admin/ImageUploadForm";
 import { PageHeader } from "@/components/admin/PageHeader";
-import { EmptyState } from "@/components/admin/states";
+import { EmptyState, StatusMessage } from "@/components/admin/states";
 import { DbNotice } from "@/components/ui/DbNotice";
 import { Icon } from "@/components/ui/Icon";
-import { imageStorageMode, NOT_ACTIVE_MESSAGE } from "@/lib/images/storage";
+import { imageStorageMode, isSitePhotoUrl, NOT_ACTIVE_MESSAGE } from "@/lib/images/storage";
 import { safeDb } from "@/lib/safe";
 import { requireAdmin } from "@/lib/session";
+import { deleteImageAction } from "./actions";
 
 export const metadata: Metadata = { title: "Images" };
 
-export default async function AdminImagesPage() {
+const DELETED: Record<string, string> = {
+  ok: "Image deleted.",
+  missing: "This image was already deleted.",
+  "site-photo": "This is a site photo (it ships with the site). It cannot be deleted here.",
+  "in-use": "This image is still used, so it was not deleted. First choose another image (or \"Use no image\") in:",
+  failed: "Sorry, that did not work. Try again.",
+};
+
+function first(v: string | string[] | undefined) {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+export default async function AdminImagesPage({ searchParams }: PageProps<"/admin/images">) {
   await requireAdmin("/admin/images");
+  const sp = await searchParams;
+  const delKey = first(sp.deleted) ?? "";
+  const delText = Object.hasOwn(DELETED, delKey) ? DELETED[delKey] : undefined;
+  const usedBy = delKey === "in-use" ? (first(sp.used) ?? "").slice(0, 300) : "";
   const mode = imageStorageMode();
   const images = await safeDb("admin images", async () => {
     const { prisma } = await import("@/lib/prisma");
@@ -21,7 +39,18 @@ export default async function AdminImagesPage() {
   if (!images) return <DbNotice what="the image library" />;
   return (
     <div className="grid gap-8">
-      <PageHeader title="Images" crumbs={[{ label: "Images" }]} lead="Upload pictures for the site. Every picture is saved as WebP and needs an alt text. Old pictures stay in the library." />
+      <PageHeader title="Images" crumbs={[{ label: "Images" }]} lead="Upload pictures for the site. Every picture is saved as WebP and needs an alt text. You can delete an uploaded picture when no event uses it. Site photos cannot be deleted." />
+      {delText &&
+        (delKey === "ok" || delKey === "missing" ? (
+          <StatusMessage>{delText}</StatusMessage>
+        ) : (
+          <div className="alert a-error" role="alert">
+            <p>
+              {delText}
+              {usedBy && <> <b>{usedBy}</b></>}
+            </p>
+          </div>
+        ))}
       {mode === "off" ? (
         <div className="alert a-warn" role="status">
           <Icon name="info" />
@@ -52,6 +81,17 @@ export default async function AdminImagesPage() {
                 <Thumb image={img} />
                 <span>{img.alt}</span>
                 <span className="hint">{img.width} × {img.height}</span>
+                {isSitePhotoUrl(img.url) ? (
+                  <span className="hint">Site photo (cannot be deleted)</span>
+                ) : (
+                  <ConfirmDialog
+                    triggerLabel="Delete"
+                    title="Delete this image?"
+                    message={`"${img.alt}" will be removed from the library and from the image storage. This cannot be undone. If an event still uses it, nothing is deleted.`}
+                    confirmLabel="Yes, delete"
+                    action={deleteImageAction.bind(null, img.id)}
+                  />
+                )}
               </li>
             ))}
           </ul>

@@ -1,12 +1,12 @@
 /**
- * Where uploaded images are saved (task 12.12). One check decides, like the other integrations (isXEnabled):
+ * Where uploaded images are saved (task 12.12), and how an uploaded file is removed (Delete, 2026-11-22). One check decides, like the other integrations (isXEnabled):
  *   BLOB_READ_WRITE_TOKEN set        -> "blob"  (real Vercel Blob store, old token auth)
  *   BLOB_STORE_ID set + on Vercel    -> "blob"  (real Vercel Blob store, OIDC auth: new stores give only the store id; used on live)
  *   no token, NOT on Vercel          -> "local" (git-ignored folder .local-uploads/, only for development)
  *   no token, running on Vercel      -> "off"   (honest message "not active yet"; the Vercel file system is NEVER written)
  */
 import { randomBytes } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 export type StorageMode = "blob" | "local" | "off";
@@ -60,5 +60,32 @@ export async function readLocalImage(name: string, env: Env = process.env): Prom
     return await readFile(join(localUploadDir(env), name));
   } catch {
     return null;
+  }
+}
+
+/** Site photos that ship with the code (public/real/). The site pages use them directly, so the admin can never delete them. */
+export function isSitePhotoUrl(url: string): boolean {
+  return url.startsWith("/real/");
+}
+
+/**
+ * Removes the stored file of an uploaded image (owner decision 2026-11-22: real Delete with 2 steps).
+ * blob  -> del() from the Blob store (a missing blob is not an error)
+ * local -> unlink in .local-uploads/ (only our own file names; a missing file is not an error)
+ * Site photos (/real/) are never touched.
+ */
+export async function removeStoredFile(url: string, storage: string, env: Env = process.env): Promise<void> {
+  if (isSitePhotoUrl(url)) throw new Error("Site photos are never removed");
+  if (storage === "blob") {
+    const { del } = await import("@vercel/blob");
+    await del(url, env.BLOB_READ_WRITE_TOKEN?.trim() ? { token: env.BLOB_READ_WRITE_TOKEN } : undefined);
+    return;
+  }
+  const name = url.startsWith("/uploads/") ? url.slice("/uploads/".length) : "";
+  if (!LOCAL_NAME_RE.test(name)) throw new Error("Not a local upload name");
+  try {
+    await unlink(join(localUploadDir(env), name));
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
   }
 }

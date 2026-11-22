@@ -49,8 +49,11 @@ describe("admin files always check requireAdmin", () => {
 
 describe("admin shell rules", () => {
   const ui = [...walk(join(root, "components", "admin")), ...files].filter((f) => /\.tsx?$/.test(f));
-  it("no 'Delete' wording in admin screens (owner rule: nothing is deleted)", () => {
-    for (const f of ui) expect(read(f), rel(f)).not.toMatch(/>\s*Delete\b|"Delete\b|'Delete\b|\bDelete\s+(this|the)\b/);
+  it("no 'Delete' wording in admin screens, except the image library (owner decision 2026-11-22: image Delete with 2 steps)", () => {
+    const DELETE_RE = />\s*Delete\b|"Delete\b|'Delete\b|\bDelete\s+(this|the)\b/;
+    const allowed = join(adminDir, "images", "page.tsx");
+    for (const f of ui) if (f !== allowed) expect(read(f), rel(f)).not.toMatch(DELETE_RE);
+    expect(read(allowed)).toMatch(/ConfirmDialog/); // the Delete there always has the "Are you sure?" step
   });
   it("noindex is in the layout metadata and in the headers config", () => {
     expect(read(join(adminDir, "layout.tsx"))).toMatch(/index:\s*false/);

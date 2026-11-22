@@ -1,17 +1,17 @@
 // One-time data step (2026-11-21, owner decision): mark all EXISTING contact messages as read, so the new "Unread" tag only shows messages that arrive from now on.
 // readAt = the time this script runs (NOT the message date: we do not pretend somebody read it on that day).
 // Only rows with readAt = NULL are updated. Nothing is deleted. Safe to run twice: the 2nd run reports 0 changes.
-// LOCAL databases only (assertLocalDb): scripts/with-local-db.sh dev|test npm run db:mark-messages-read
-// Live (Neon) is a separate step with the owner's OK and a backup branch (task 12.19).
+// Local: scripts/with-local-db.sh dev|test npm run db:mark-messages-read
+// Live (Neon): only with the owner's OK + a backup branch, and ALLOW_REMOTE_DB_SEED=true on the command line (assertSeedTarget, same guard as the seeds).
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { assertLocalDb } from "../lib/assert-local-db";
+import { assertSeedTarget } from "../lib/assert-local-db";
 import { PrismaClient } from "../lib/generated/prisma/client";
 
 async function main() {
   const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!url) throw new Error("DIRECT_URL or DATABASE_URL is not set");
-  assertLocalDb(url, "the mark-messages-read step");
+  assertSeedTarget(url);
   const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
   console.log(`Database host: ${new URL(url).hostname}`);
   try {

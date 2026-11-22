@@ -8,8 +8,9 @@ import { MAX_UPLOAD_BYTES, checkUpload, detectImageType, tooBigMessage, WRONG_TY
 import { imageStorageMode, LOCAL_NAME_RE, newImageName, NOT_ACTIVE_MESSAGE, readLocalImage, saveWebp } from "@/lib/images/storage";
 
 const blobPut = vi.hoisted(() => vi.fn());
-vi.mock("@vercel/blob", () => ({ put: blobPut }));
-import { uploadImage } from "@/lib/images/service";
+const blobDel = vi.hoisted(() => vi.fn());
+vi.mock("@vercel/blob", () => ({ put: blobPut, del: blobDel }));
+import { deleteImage, uploadImage } from "@/lib/images/service";
 
 async function png(w = 40, h = 20) {
   return sharp({ create: { width: w, height: h, channels: 3, background: "#c33" } }).png().toBuffer();
@@ -181,5 +182,63 @@ describe("uploadImage service", () => {
     const r = await uploadImage(db as never, { size: bytes.length, bytes }, "alt", "a", { BLOB_READ_WRITE_TOKEN: "tok", VERCEL: "1" });
     expect(r.ok).toBe(true);
     expect(db.mediaImage.create.mock.calls[0][0].data).toMatchObject({ storage: "blob", url: "https://abc.public.blob.vercel-storage.com/uploads/n.webp" });
+  });
+});
+
+describe("deleteImage (owner decision 2026-11-22: real Delete, 2 steps)", () => {
+  const row = (over: Record<string, unknown> = {}) => ({ id: "m1", url: "https://abc.public.blob.vercel-storage.com/uploads/x.webp", alt: "Moon", storage: "blob", ...over });
+  const db = (img: unknown, usedBy: { title: string }[] = []) => ({
+    mediaImage: { findUnique: vi.fn().mockResolvedValue(img), delete: vi.fn().mockResolvedValue({}) },
+    offering: { findMany: vi.fn().mockResolvedValue(usedBy) },
+    adminAuditLog: { create: vi.fn().mockResolvedValue({}) },
+  });
+  beforeEach(() => {
+    blobDel.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("blob image not in use: removes the file (OIDC = no token), then the row, then one audit row", async () => {
+    const d = db(row());
+    expect(await deleteImage(d as never, "m1", "admin1", { BLOB_STORE_ID: "store_x", VERCEL: "1" })).toEqual({ ok: true });
+    expect(blobDel).toHaveBeenCalledWith("https://abc.public.blob.vercel-storage.com/uploads/x.webp", undefined);
+    expect(d.mediaImage.delete).toHaveBeenCalledWith({ where: { id: "m1" } });
+    expect(d.adminAuditLog.create.mock.calls[0][0].data).toMatchObject({ userId: "admin1", action: "image.delete", entity: "MediaImage", entityId: "m1" });
+  });
+  it("blob with an old token: passes the token to del()", async () => {
+    await deleteImage(db(row()) as never, "m1", "a", { BLOB_READ_WRITE_TOKEN: "tok" });
+    expect(blobDel).toHaveBeenCalledWith(expect.any(String), { token: "tok" });
+  });
+  it("in use by an event: nothing is removed, the titles are returned", async () => {
+    const d = db(row(), [{ title: "Full Moon Circle" }]);
+    expect(await deleteImage(d as never, "m1", "a", {})).toEqual({ ok: false, reason: "in-use", usedBy: ["Full Moon Circle"] });
+    expect(blobDel).not.toHaveBeenCalled();
+    expect(d.mediaImage.delete).not.toHaveBeenCalled();
+    expect(d.adminAuditLog.create).not.toHaveBeenCalled();
+  });
+  it("site photo (/real/): never deleted", async () => {
+    const d = db(row({ url: "/real/hero-home-01.webp", storage: "local" }));
+    expect(await deleteImage(d as never, "m1", "a", {})).toEqual({ ok: false, reason: "site-photo" });
+    expect(d.offering.findMany).not.toHaveBeenCalled();
+    expect(d.mediaImage.delete).not.toHaveBeenCalled();
+  });
+  it("missing row: reports missing, removes nothing", async () => {
+    const d = db(null);
+    expect(await deleteImage(d as never, "nope", "a", {})).toEqual({ ok: false, reason: "missing" });
+    expect(d.mediaImage.delete).not.toHaveBeenCalled();
+  });
+  it("file removal fails: the row stays (no broken library entry)", async () => {
+    blobDel.mockRejectedValue(new Error("network"));
+    const d = db(row());
+    await expect(deleteImage(d as never, "m1", "a", {})).rejects.toThrow("network");
+    expect(d.mediaImage.delete).not.toHaveBeenCalled();
+  });
+  it("local upload: removes only that file in the local folder; a missing file is fine; bad names are refused", async () => {
+    const env = tmpEnv();
+    const saved = await saveWebp(Buffer.from("w"), "local", env);
+    const other = await saveWebp(Buffer.from("v"), "local", env);
+    await deleteImage(db(row({ url: saved.url, storage: "local" })) as never, "m1", "a", env);
+    expect(readdirSync(env.LOCAL_UPLOAD_DIR)).toEqual([other.url.replace("/uploads/", "")]);
+    await expect(deleteImage(db(row({ url: saved.url, storage: "local" })) as never, "m1", "a", env)).resolves.toEqual({ ok: true });
+    await expect(deleteImage(db(row({ url: "/uploads/../../etc/passwd", storage: "local" })) as never, "m1", "a", env)).rejects.toThrow();
+    expect(readdirSync(env.LOCAL_UPLOAD_DIR)).toHaveLength(1);
   });
 });
